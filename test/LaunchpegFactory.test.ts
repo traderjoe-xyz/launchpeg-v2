@@ -1,7 +1,7 @@
 import { config as hardhatConfig, ethers, network, upgrades } from 'hardhat'
 import { expect } from 'chai'
 import { getDefaultLaunchpegConfig, LaunchpegConfig } from './utils/helpers'
-import { ContractFactory, Contract } from 'ethers'
+import { Bytes, ContractFactory, Contract } from 'ethers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 
 describe('LaunchpegFactory', () => {
@@ -23,6 +23,8 @@ describe('LaunchpegFactory', () => {
   let bob: SignerWithAddress
   let projectOwner: SignerWithAddress
   let royaltyReceiver: SignerWithAddress
+
+  let LAUNCHPEG_PAUSER_ROLE: Bytes
 
   before(async () => {
     launchpegCF = await ethers.getContractFactory('Launchpeg')
@@ -266,20 +268,24 @@ describe('LaunchpegFactory', () => {
       )
     })
 
-    it('Should allow owner to add and remove default pausers', async () => {
+    it('Should allow owner to add and remove Launchpeg pausers', async () => {
+      LAUNCHPEG_PAUSER_ROLE = await launchpegFactory.LAUNCHPEG_PAUSER_ROLE()
+
       // Add multiple times
       await launchpegFactory.addLaunchpegPauser(alice.address)
       await launchpegFactory.addLaunchpegPauser(alice.address)
+      expect(await launchpegFactory.hasRole(LAUNCHPEG_PAUSER_ROLE, alice.address)).to.eq(true)
       await launchpegFactory.addLaunchpegPauser(bob.address)
-      expect(await launchpegFactory.launchpegPausers()).to.eql([alice.address, bob.address])
+      expect(await launchpegFactory.hasRole(LAUNCHPEG_PAUSER_ROLE, bob.address)).to.eq(true)
 
       // Remove multiple times
       await launchpegFactory.removeLaunchpegPauser(bob.address)
       await launchpegFactory.removeLaunchpegPauser(bob.address)
-      expect(await launchpegFactory.launchpegPausers()).to.eql([alice.address])
+      expect(await launchpegFactory.hasRole(LAUNCHPEG_PAUSER_ROLE, bob.address)).to.eq(false)
+      expect(await launchpegFactory.hasRole(LAUNCHPEG_PAUSER_ROLE, alice.address)).to.eq(true)
     })
 
-    it('Should allow owner or pauser to pause and unpause any Launchpeg collection', async () => {
+    it('Should allow owner or pauser to pause any Launchpeg collection', async () => {
       await launchpegFactory.createLaunchpeg(
         'My new collection',
         'JOEPEG',
@@ -293,26 +299,30 @@ describe('LaunchpegFactory', () => {
       )
       const launchpegAddress = await launchpegFactory.allLaunchpegs(0, 0)
       const launchpeg = await ethers.getContractAt('Launchpeg', launchpegAddress)
+      await launchpeg.connect(dev).becomeOwner()
 
       await launchpegFactory.pauseLaunchpeg(launchpegAddress)
       expect(await launchpeg.paused()).to.eq(true)
-      await launchpegFactory.unpauseLaunchpeg(launchpegAddress)
-      expect(await launchpeg.paused()).to.eq(false)
+      await launchpeg.unpause()
 
       await launchpegFactory.addLaunchpegPauser(alice.address)
       await launchpegFactory.connect(alice).pauseLaunchpeg(launchpegAddress)
       expect(await launchpeg.paused()).to.eq(true)
-      await expect(launchpegFactory.connect(bob).pauseLaunchpeg(launchpegAddress)).to.be.revertedWith(
-        'LaunchpegFactory__NotOwnerOrPauser'
+      await expect(launchpeg.connect(alice).unpause()).to.be.revertedWith(
+        'SafeAccessControlEnumerableUpgradeable__SenderMissingRoleAndIsNotOwner'
       )
+      await launchpeg.unpause()
 
+      await expect(launchpegFactory.connect(bob).pauseLaunchpeg(launchpegAddress)).to.be.revertedWith(
+        'SafeAccessControlEnumerableUpgradeable__SenderMissingRoleAndIsNotOwner'
+      )
       await launchpegFactory.addLaunchpegPauser(bob.address)
       await launchpegFactory.removeLaunchpegPauser(alice.address)
-      await expect(launchpegFactory.connect(alice).unpauseLaunchpeg(launchpegAddress)).to.be.revertedWith(
-        'LaunchpegFactory__NotOwnerOrPauser'
+      await expect(launchpegFactory.connect(alice).pauseLaunchpeg(launchpegAddress)).to.be.revertedWith(
+        'SafeAccessControlEnumerableUpgradeable__SenderMissingRoleAndIsNotOwner'
       )
-      await launchpegFactory.connect(bob).unpauseLaunchpeg(launchpegAddress)
-      expect(await launchpeg.paused()).to.eq(false)
+      await launchpegFactory.connect(bob).pauseLaunchpeg(launchpegAddress)
+      expect(await launchpeg.paused()).to.eq(true)
     })
   })
 
