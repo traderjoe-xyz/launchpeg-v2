@@ -55,10 +55,13 @@ contract LaunchpegFactory is
     event SetBatchReveal(address indexed batchReveal);
     event SetDefaultJoeFeePercent(uint256 joeFeePercent);
     event SetDefaultJoeFeeCollector(address indexed joeFeeCollector);
-    event AddDefaultPauser(address indexed pauser);
-    event RemoveDefaultPauser(address indexed pauser);
+    event AddLaunchpegPauser(address indexed pauser);
+    event RemoveLaunchpegPauser(address indexed pauser);
 
     using EnumerableSet for EnumerableSet.AddressSet;
+
+    /// @dev Pauser and unpauser addresses for Launchpeg collections
+    EnumerableSet.AddressSet private _launchpegPausers;
 
     /// @notice Launchpeg contract to be cloned
     address public override launchpegImplementation;
@@ -78,9 +81,6 @@ contract LaunchpegFactory is
 
     /// @notice Batch reveal address
     address public override batchReveal;
-
-    /// @dev Default addresses with pauser role for created collections
-    EnumerableSet.AddressSet private _defaultPausers;
 
     /// @notice Initializes the Launchpeg factory
     /// @dev Uses clone factory pattern to save space
@@ -121,18 +121,18 @@ contract LaunchpegFactory is
         joeFeeCollector = _joeFeeCollector;
     }
 
-    function defaultPausers()
+    function launchpegPausers()
         external
         view
         override
         returns (address[] memory)
     {
-        uint256 len = _defaultPausers.length();
-        address[] memory defaultPauserAddresses = new address[](len);
+        uint256 len = _launchpegPausers.length();
+        address[] memory pauserAddresses = new address[](len);
         for (uint256 i; i < len; i++) {
-            defaultPauserAddresses[i] = _defaultPausers.at(i);
+            pauserAddresses[i] = _launchpegPausers.at(i);
         }
-        return defaultPauserAddresses;
+        return pauserAddresses;
     }
 
     /// @notice Returns the number of Launchpegs
@@ -195,7 +195,7 @@ contract LaunchpegFactory is
 
         IPendingOwnableUpgradeable(launchpeg).setPendingOwner(msg.sender);
 
-        _setPausers(launchpeg);
+        _grantPauserRoleToFactory(launchpeg);
 
         emit LaunchpegCreated(
             launchpeg,
@@ -258,7 +258,7 @@ contract LaunchpegFactory is
 
         IPendingOwnableUpgradeable(flatLaunchpeg).setPendingOwner(msg.sender);
 
-        _setPausers(flatLaunchpeg);
+        _grantPauserRoleToFactory(flatLaunchpeg);
 
         emit FlatLaunchpegCreated(
             flatLaunchpeg,
@@ -344,44 +344,68 @@ contract LaunchpegFactory is
         emit SetDefaultJoeFeeCollector(_joeFeeCollector);
     }
 
-    /// @notice Add a default address with pauser role
+    /// @notice Adds an address to the set of Launchpeg pausers
     /// @param _pauser Pauser address to add
     /// @return true if not existing pauser and successfully added, false otherwise
-    function addDefaultPauser(address _pauser)
+    function addLaunchpegPauser(address _pauser)
         external
         override
         onlyOwner
         returns (bool)
     {
-        bool success = _defaultPausers.add(_pauser);
+        bool success = _launchpegPausers.add(_pauser);
         if (success) {
-            emit AddDefaultPauser(_pauser);
+            emit AddLaunchpegPauser(_pauser);
         }
         return success;
     }
 
-    /// @notice Remove a default address with pauser role
+    /// @notice Removes an address from the set of Launchpeg pausers
     /// @param _pauser Pauser address to remove
     /// @return true if existing pauser and successfully removed, false otherwise
-    function removeDefaultPauser(address _pauser)
+    function removeLaunchpegPauser(address _pauser)
         external
         override
         onlyOwner
         returns (bool)
     {
-        bool success = _defaultPausers.remove(_pauser);
+        bool success = _launchpegPausers.remove(_pauser);
         if (success) {
-            emit RemoveDefaultPauser(_pauser);
+            emit RemoveLaunchpegPauser(_pauser);
         }
         return success;
     }
 
-    /// @dev Add users with pauser role to a new Launchpeg collection
-    function _setPausers(address launchpeg) private {
-        bytes32 pauserRole = ISafePausableUpgradeable(launchpeg).PAUSER_ROLE();
-        for (uint256 i; i < _defaultPausers.length(); i++) {
-            address pauser = _defaultPausers.at(i);
-            IAccessControlUpgradeable(launchpeg).grantRole(pauserRole, pauser);
+    /// @notice Pause specified Launchpeg
+    /// @param _launchpeg Launchpeg address
+    function pauseLaunchpeg(address _launchpeg) external override {
+        if (msg.sender != owner() && !_launchpegPausers.contains(msg.sender)) {
+            revert LaunchpegFactory__NotOwnerOrPauser();
         }
+        ISafePausableUpgradeable(_launchpeg).pause();
+    }
+
+    /// @notice Pause specified Launchpeg
+    /// @param _launchpeg Launchpeg address
+    function unpauseLaunchpeg(address _launchpeg) external override {
+        if (msg.sender != owner() && !_launchpegPausers.contains(msg.sender)) {
+            revert LaunchpegFactory__NotOwnerOrPauser();
+        }
+        ISafePausableUpgradeable(_launchpeg).unpause();
+    }
+
+    /// @dev Grant pauser and unpauser role to the factory for a new Launchpeg.
+    function _grantPauserRoleToFactory(address launchpeg) private {
+        bytes32 pauserRole = ISafePausableUpgradeable(launchpeg).PAUSER_ROLE();
+        IAccessControlUpgradeable(launchpeg).grantRole(
+            pauserRole,
+            address(this)
+        );
+        bytes32 unpauserRole = ISafePausableUpgradeable(launchpeg)
+            .UNPAUSER_ROLE();
+        IAccessControlUpgradeable(launchpeg).grantRole(
+            unpauserRole,
+            address(this)
+        );
     }
 }

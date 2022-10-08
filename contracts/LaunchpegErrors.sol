@@ -4,6 +4,7 @@ pragma solidity ^0.8.4;
 // LaunchpegFactory
 error LaunchpegFactory__InvalidBatchReveal();
 error LaunchpegFactory__InvalidImplementation();
+error LaunchpegFactory__NotOwnerOrPauser();
 
 // Launchpeg
 error Launchpeg__AllowlistBeforePreMint();
