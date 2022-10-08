@@ -385,7 +385,7 @@ contract LaunchpegFactory is
         ISafePausableUpgradeable(_launchpeg).pause();
     }
 
-    /// @notice Pause specified Launchpeg
+    /// @notice Unpause specified Launchpeg
     /// @param _launchpeg Launchpeg address
     function unpauseLaunchpeg(address _launchpeg) external override {
         if (msg.sender != owner() && !_launchpegPausers.contains(msg.sender)) {
@@ -394,7 +394,7 @@ contract LaunchpegFactory is
         ISafePausableUpgradeable(_launchpeg).unpause();
     }
 
-    /// @dev Grant pauser and unpauser role to the factory for a new Launchpeg.
+    /// @dev Grant pauser and unpauser role to the factory for a Launchpeg collection
     function _grantPauserRoleToFactory(address launchpeg) private {
         bytes32 pauserRole = ISafePausableUpgradeable(launchpeg).PAUSER_ROLE();
         IAccessControlUpgradeable(launchpeg).grantRole(
