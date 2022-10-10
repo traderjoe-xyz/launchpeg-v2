@@ -103,6 +103,25 @@ describe('Launchpeg', () => {
       ).to.be.revertedWith('Initializable: contract is already initialized')
     })
 
+    it('Should revert if owner is zero address', async () => {
+      launchpeg = await launchpegCF.deploy()
+      await expect(
+        launchpeg.initialize(
+          'JoePEG',
+          'JOEPEG',
+          ethers.constants.AddressZero,
+          ethers.constants.AddressZero,
+          projectOwner.address,
+          royaltyReceiver.address,
+          config.maxBatchSize,
+          config.collectionSize,
+          config.amountForAuction,
+          config.amountForAllowlist,
+          config.amountForDevs
+        )
+      ).to.be.revertedWith('Launchpeg__InvalidOwner()')
+    })
+
     it('Should revert if project owner is zero address', async () => {
       launchpeg = await launchpegCF.deploy()
       await expect(
