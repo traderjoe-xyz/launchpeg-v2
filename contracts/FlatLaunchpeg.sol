@@ -145,12 +145,10 @@ contract FlatLaunchpeg is BaseLaunchpeg, IFlatLaunchpeg {
         override
         onlyOwner
     {
-        if (preMintStartTime == 0) {
-            revert Launchpeg__NotInitialized();
-        }
-        if (_preMintStartTime < block.timestamp) {
-            revert Launchpeg__InvalidStartTime();
-        }
+        _checkInitialized(preMintStartTime);
+        _checkBeforePhaseStart(preMintStartTime);
+        _checkNotBeforeBlockTimestamp(_preMintStartTime);
+
         if (allowlistStartTime < _preMintStartTime) {
             revert Launchpeg__AllowlistBeforePreMint();
         }

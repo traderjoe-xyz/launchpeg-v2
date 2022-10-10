@@ -229,6 +229,17 @@ describe('Launchpeg', () => {
       expect(await launchpeg.auctionSaleStartTime()).to.eq(newAuctionSaleStartTime)
     })
 
+    it('Should revert if auction sale start time is set after auction phase starts', async () => {
+      // Advance to auction phase
+      const blockTimestamp = await latest()
+      await advanceTimeAndBlock(duration.seconds(config.auctionStartTime.sub(blockTimestamp).toNumber()))
+
+      const newAuctionSaleStartTime = config.auctionStartTime.add(duration.minutes(30))
+      await expect(launchpeg.setAuctionSaleStartTime(newAuctionSaleStartTime)).to.be.revertedWith(
+        'Launchpeg__WrongPhase()'
+      )
+    })
+
     it('Should revert if auction is before block timestamp or after pre-mint', async () => {
       const blockTimestamp = await latest()
       let invalidAuctionSaleStartTime = blockTimestamp.sub(duration.minutes(30))
@@ -252,8 +263,25 @@ describe('Launchpeg', () => {
       expect(await launchpeg.preMintStartTime()).to.eq(newPreMintStartTime)
     })
 
+    it('Should revert if pre-mint start time is set after pre-mint phase starts', async () => {
+      // Advance to pre-mint phase
+      const blockTimestamp = await latest()
+      await advanceTimeAndBlock(duration.seconds(config.preMintStartTime.sub(blockTimestamp).toNumber()))
+
+      const newPreMintStartTime = config.preMintStartTime.add(duration.minutes(30))
+      await expect(launchpeg.setPreMintStartTime(newPreMintStartTime)).to.be.revertedWith('Launchpeg__WrongPhase()')
+    })
+
+    it('Should revert if pre-mint start time is before block timestamp', async () => {
+      const blockTimestamp = await latest()
+      const newPreMintStartTime = blockTimestamp.sub(1)
+      await expect(launchpeg.setPreMintStartTime(newPreMintStartTime)).to.be.revertedWith(
+        'Launchpeg__InvalidStartTime()'
+      )
+    })
+
     it('Should revert if pre-mint is before auction or after allowlist', async () => {
-      let invalidPreMintStartTime = config.auctionStartTime.sub(duration.minutes(30))
+      let invalidPreMintStartTime = config.auctionStartTime.sub(duration.minutes(1))
       await expect(launchpeg.setPreMintStartTime(invalidPreMintStartTime)).to.be.revertedWith(
         'Launchpeg__PreMintBeforeAuction()'
       )

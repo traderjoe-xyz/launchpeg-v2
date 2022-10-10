@@ -255,6 +255,23 @@ describe('Launchpeg', () => {
       expect(await launchpeg.allowlistStartTime()).to.eq(newAllowlistStartTime)
     })
 
+    it('Should revert if allowlist start time is set after allowlist phase starts', async () => {
+      // Advance to allowlist phase
+      const blockTimestamp = await latest()
+      await advanceTimeAndBlock(duration.seconds(config.allowlistStartTime.sub(blockTimestamp).toNumber()))
+
+      const newAllowlistStartTime = config.allowlistStartTime.add(duration.minutes(30))
+      await expect(launchpeg.setAllowlistStartTime(newAllowlistStartTime)).to.be.revertedWith('Launchpeg__WrongPhase()')
+    })
+
+    it('Should revert if allowlist start time is before block timestamp', async () => {
+      const blockTimestamp = await latest()
+      const newAllowlistStartTime = blockTimestamp.sub(1)
+      await expect(launchpeg.setAllowlistStartTime(newAllowlistStartTime)).to.be.revertedWith(
+        'Launchpeg__InvalidStartTime()'
+      )
+    })
+
     it('Should revert if allowlist is before pre-mint or after public sale', async () => {
       let invalidAllowlistStartTime = config.preMintStartTime.sub(duration.minutes(30))
       await expect(launchpeg.setAllowlistStartTime(invalidAllowlistStartTime)).to.be.revertedWith(
@@ -288,6 +305,25 @@ describe('Launchpeg', () => {
       )
     })
 
+    it('Should revert if public sale start time is set after public sale phase starts', async () => {
+      // Advance to public sale phase
+      const blockTimestamp = await latest()
+      await advanceTimeAndBlock(duration.seconds(config.publicSaleStartTime.sub(blockTimestamp).toNumber()))
+
+      const newPublicSaleStartTime = config.publicSaleStartTime.add(duration.minutes(30))
+      await expect(launchpeg.setPublicSaleStartTime(newPublicSaleStartTime)).to.be.revertedWith(
+        'Launchpeg__WrongPhase()'
+      )
+    })
+
+    it('Should revert if public sale start time is before block timestamp', async () => {
+      const blockTimestamp = await latest()
+      const newPublicSaleStartTime = blockTimestamp.sub(1)
+      await expect(launchpeg.setPublicSaleStartTime(newPublicSaleStartTime)).to.be.revertedWith(
+        'Launchpeg__InvalidStartTime()'
+      )
+    })
+
     it('Should allow owner to set public sale end time', async () => {
       const newPublicSaleEndTime = config.publicSaleEndTime.sub(duration.minutes(30))
       await expect(launchpeg.connect(projectOwner).setPublicSaleEndTime(newPublicSaleEndTime)).to.be.revertedWith(
@@ -302,6 +338,23 @@ describe('Launchpeg', () => {
       const invalidPublicSaleEndTime = config.publicSaleStartTime.sub(duration.minutes(30))
       await expect(launchpeg.setPublicSaleEndTime(invalidPublicSaleEndTime)).to.be.revertedWith(
         'Launchpeg__PublicSaleEndBeforePublicSaleStart()'
+      )
+    })
+
+    it('Should revert if public sale end time is set after public sale phase starts', async () => {
+      // Advance to public sale phase
+      const blockTimestamp = await latest()
+      await advanceTimeAndBlock(duration.seconds(config.publicSaleStartTime.sub(blockTimestamp).toNumber()))
+
+      const newPublicSaleEndTime = config.publicSaleEndTime.add(duration.minutes(30))
+      await expect(launchpeg.setPublicSaleEndTime(newPublicSaleEndTime)).to.be.revertedWith('Launchpeg__WrongPhase()')
+    })
+
+    it('Should revert if public sale end time is before block timestamp', async () => {
+      const blockTimestamp = await latest()
+      const newPublicSaleEndTime = blockTimestamp.sub(1)
+      await expect(launchpeg.setPublicSaleEndTime(newPublicSaleEndTime)).to.be.revertedWith(
+        'Launchpeg__InvalidStartTime()'
       )
     })
 

@@ -343,9 +343,10 @@ abstract contract BaseLaunchpeg is
         override
         onlyOwner
     {
-        if (allowlistStartTime == 0) {
-            revert Launchpeg__NotInitialized();
-        }
+        _checkInitialized(allowlistStartTime);
+        _checkBeforePhaseStart(allowlistStartTime);
+        _checkNotBeforeBlockTimestamp(_allowlistStartTime);
+
         if (_allowlistStartTime < preMintStartTime) {
             revert Launchpeg__AllowlistBeforePreMint();
         }
@@ -365,9 +366,10 @@ abstract contract BaseLaunchpeg is
         override
         onlyOwner
     {
-        if (publicSaleStartTime == 0) {
-            revert Launchpeg__NotInitialized();
-        }
+        _checkInitialized(publicSaleStartTime);
+        _checkBeforePhaseStart(publicSaleStartTime);
+        _checkNotBeforeBlockTimestamp(_publicSaleStartTime);
+
         if (_publicSaleStartTime < allowlistStartTime) {
             revert Launchpeg__PublicSaleBeforeAllowlist();
         }
@@ -387,9 +389,11 @@ abstract contract BaseLaunchpeg is
         override
         onlyOwner
     {
-        if (publicSaleEndTime == 0) {
-            revert Launchpeg__NotInitialized();
-        }
+        _checkInitialized(publicSaleEndTime);
+        // check before start of public sale phase
+        _checkBeforePhaseStart(publicSaleStartTime);
+        _checkNotBeforeBlockTimestamp(_publicSaleEndTime);
+
         if (_publicSaleEndTime < publicSaleStartTime) {
             revert Launchpeg__PublicSaleEndBeforePublicSaleStart();
         }
@@ -404,9 +408,7 @@ abstract contract BaseLaunchpeg is
         override
         onlyOwner
     {
-        if (_withdrawAVAXStartTime < block.timestamp) {
-            revert Launchpeg__InvalidStartTime();
-        }
+        _checkNotBeforeBlockTimestamp(_withdrawAVAXStartTime);
         withdrawAVAXStartTime = _withdrawAVAXStartTime;
         emit WithdrawAVAXStartTimeSet(_withdrawAVAXStartTime);
     }
@@ -670,12 +672,12 @@ abstract contract BaseLaunchpeg is
         return batchReveal.hasBatchToReveal(address(this), totalSupply());
     }
 
-    // @dev Total supply including pre-mints
+    /// @dev Total supply including pre-mints
     function _totalSupplyWithPreMint() internal view returns (uint256) {
         return totalSupply() + amountMintedDuringPreMint - amountBatchMinted;
     }
 
-    // @notice Number minted by user including pre-mints
+    /// @notice Number minted by user including pre-mints
     function numberMintedWithPreMint(address _owner)
         public
         view
@@ -683,5 +685,26 @@ abstract contract BaseLaunchpeg is
         returns (uint256)
     {
         return _numberMinted(_owner) + userAddressToPreMintAmount[_owner];
+    }
+
+    /// @dev Checks if phase time has been initialized
+    function _checkInitialized(uint256 _phaseTime) internal pure {
+        if (_phaseTime == 0) {
+            revert Launchpeg__NotInitialized();
+        }
+    }
+
+    /// @dev Checks if block timestamp is before phase start
+    function _checkBeforePhaseStart(uint256 _phaseStartTime) internal view {
+        if (_phaseStartTime <= block.timestamp) {
+            revert Launchpeg__WrongPhase();
+        }
+    }
+
+    /// @dev Checks if new time is equal to or after block timestamp
+    function _checkNotBeforeBlockTimestamp(uint256 _newTime) internal view {
+        if (_newTime < block.timestamp) {
+            revert Launchpeg__InvalidStartTime();
+        }
     }
 }
