@@ -61,6 +61,6 @@ error SafeAccessControlEnumerableUpgradeable__SenderMissingRoleAndIsNotOwner(
 );
 error SafeAccessControlEnumerableUpgradeable__RoleIsDefaultAdmin();
 
-// SafeAccessControlEnumerableUpgradeable
+// SafePausableUpgradeable
 error SafePausableUpgradeable__AlreadyPaused();
 error SafePausableUpgradeable__AlreadyUnpaused();
