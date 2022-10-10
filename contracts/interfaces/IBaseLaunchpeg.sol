@@ -19,7 +19,9 @@ interface IBaseLaunchpeg is IERC721Upgradeable, IERC721MetadataUpgradeable {
         Ended
     }
 
-    function PROJECT_OWNER_ROLE() external view returns (bytes32);
+    function FACTORY_ROLE() external pure returns (bytes32);
+
+    function PROJECT_OWNER_ROLE() external pure returns (bytes32);
 
     function collectionSize() external view returns (uint256);
 

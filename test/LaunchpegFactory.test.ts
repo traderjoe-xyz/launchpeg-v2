@@ -67,6 +67,8 @@ describe('LaunchpegFactory', () => {
     await launchpeg.initialize(
       'JoePEG',
       'JOEPEG',
+      ethers.constants.AddressZero,
+      dev.address,
       projectOwner.address,
       royaltyReceiver.address,
       config.maxBatchSize,
@@ -83,6 +85,8 @@ describe('LaunchpegFactory', () => {
     await flatLaunchpeg.initialize(
       'JoePEG',
       'JOEPEG',
+      ethers.constants.AddressZero,
+      dev.address,
       projectOwner.address,
       royaltyReceiver.address,
       config.maxBatchSize,
@@ -299,7 +303,6 @@ describe('LaunchpegFactory', () => {
       )
       const launchpegAddress = await launchpegFactory.allLaunchpegs(0, 0)
       const launchpeg = await ethers.getContractAt('Launchpeg', launchpegAddress)
-      await launchpeg.connect(dev).becomeOwner()
 
       await launchpegFactory.pauseLaunchpeg(launchpegAddress)
       expect(await launchpeg.paused()).to.eq(true)

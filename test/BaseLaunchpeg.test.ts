@@ -53,6 +53,8 @@ describe('Launchpeg', () => {
     await launchpeg.initialize(
       'JoePEG',
       'JOEPEG',
+      ethers.constants.AddressZero,
+      dev.address,
       projectOwner.address,
       royaltyReceiver.address,
       config.maxBatchSize,
@@ -88,6 +90,8 @@ describe('Launchpeg', () => {
         launchpeg.initialize(
           'JoePEG',
           'JOEPEG',
+          ethers.constants.AddressZero,
+          dev.address,
           projectOwner.address,
           royaltyReceiver.address,
           config.maxBatchSize,
@@ -105,6 +109,8 @@ describe('Launchpeg', () => {
         launchpeg.initialize(
           'JoePEG',
           'JOEPEG',
+          ethers.constants.AddressZero,
+          dev.address,
           ethers.constants.AddressZero,
           royaltyReceiver.address,
           config.maxBatchSize,
@@ -140,7 +146,7 @@ describe('Launchpeg', () => {
       const feeCollector = bob.address
 
       await expect(launchpeg.connect(alice).initializeJoeFee(feePercent, feeCollector)).to.be.revertedWith(
-        'PendingOwnableUpgradeable__NotOwner()'
+        'SafeAccessControlEnumerableUpgradeable__SenderMissingRoleAndIsNotOwner'
       )
 
       await launchpeg.initializeJoeFee(feePercent, feeCollector)
@@ -227,7 +233,7 @@ describe('Launchpeg', () => {
 
     it('Should allow owner to set batch reveal address', async () => {
       await expect(launchpeg.connect(alice).setBatchReveal(batchReveal.address)).to.be.revertedWith(
-        'PendingOwnableUpgradeable__NotOwner()'
+        'SafeAccessControlEnumerableUpgradeable__SenderMissingRoleAndIsNotOwner'
       )
 
       await launchpeg.setBatchReveal(batchReveal.address)

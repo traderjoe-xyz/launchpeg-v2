@@ -53,6 +53,8 @@ describe('Launchpeg', () => {
     await launchpeg.initialize(
       'JoePEG',
       'JOEPEG',
+      ethers.constants.AddressZero,
+      dev.address,
       projectOwner.address,
       royaltyReceiver.address,
       config.maxBatchSize,
@@ -84,6 +86,8 @@ describe('Launchpeg', () => {
         launchpeg.initialize(
           'JoePEG',
           'JOEPEG',
+          ethers.constants.AddressZero,
+          dev.address,
           projectOwner.address,
           royaltyReceiver.address,
           config.maxBatchSize,

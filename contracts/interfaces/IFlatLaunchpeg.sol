@@ -10,6 +10,8 @@ interface IFlatLaunchpeg is IBaseLaunchpeg {
     function initialize(
         string memory _name,
         string memory _symbol,
+        address _factory,
+        address _owner,
         address _projectOwner,
         address _royaltyReceiver,
         uint256 _maxBatchSize,

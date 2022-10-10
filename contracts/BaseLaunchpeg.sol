@@ -26,6 +26,9 @@ abstract contract BaseLaunchpeg is
 
     IBatchReveal public batchReveal;
 
+    /// @notice Role granted to Launchpeg factory
+    bytes32 public constant override FACTORY_ROLE = keccak256("FACTORY_ROLE");
+
     /// @notice Role granted to project owners
     bytes32 public constant override PROJECT_OWNER_ROLE =
         keccak256("PROJECT_OWNER_ROLE");
@@ -196,6 +199,8 @@ abstract contract BaseLaunchpeg is
     /// @dev BaseLaunchpeg initialization
     /// @param _name ERC721 name
     /// @param _symbol ERC721 symbol
+    /// @param _factory Launchpeg factory
+    /// @param _owner The contract owner
     /// @param _projectOwner The project owner
     /// @param _royaltyReceiver Royalty fee collector
     /// @param _maxBatchSize Max amount of NFTs that can be minted at once
@@ -205,6 +210,8 @@ abstract contract BaseLaunchpeg is
     function initializeBaseLaunchpeg(
         string memory _name,
         string memory _symbol,
+        address _factory,
+        address _owner,
         address _projectOwner,
         address _royaltyReceiver,
         uint256 _maxBatchSize,
@@ -217,21 +224,26 @@ abstract contract BaseLaunchpeg is
         __ERC2981_init();
         __ERC721A_init(_name, _symbol);
 
+        if (_owner == address(0)) {
+            revert Launchpeg__InvalidOwner();
+        }
         if (_projectOwner == address(0)) {
             revert Launchpeg__InvalidProjectOwner();
         }
-
         if (
             _collectionSize == 0 ||
             _amountForDevs + _amountForAllowlist > _collectionSize
         ) {
             revert Launchpeg__LargerCollectionSizeNeeded();
         }
-
         if (_maxBatchSize > _collectionSize) {
             revert Launchpeg__InvalidMaxBatchSize();
         }
 
+        if (_factory != address(0)) {
+            grantRole(PAUSER_ROLE, _factory);
+            grantRole(FACTORY_ROLE, _factory);
+        }
         grantRole(PROJECT_OWNER_ROLE, _projectOwner);
         // Default royalty is 5%
         _setDefaultRoyalty(_royaltyReceiver, 500);
@@ -241,6 +253,8 @@ abstract contract BaseLaunchpeg is
         maxPerAddressDuringMint = _maxBatchSize;
         amountForDevs = _amountForDevs;
         amountForAllowlist = _amountForAllowlist;
+
+        _transferOwnership(_owner);
     }
 
     /// @notice Initialize the sales fee percent taken by Joepegs and address that collects the fees
@@ -249,7 +263,7 @@ abstract contract BaseLaunchpeg is
     function initializeJoeFee(uint256 _joeFeePercent, address _joeFeeCollector)
         external
         override
-        onlyOwner
+        onlyOwnerOrRole(FACTORY_ROLE)
     {
         if (joeFeeCollector != address(0)) {
             revert Launchpeg__JoeFeeAlreadyInitialized();
@@ -399,7 +413,11 @@ abstract contract BaseLaunchpeg is
 
     /// @notice Update batch reveal
     /// @dev Can be set to zero address to disable batch reveal
-    function setBatchReveal(address _batchReveal) external override onlyOwner {
+    function setBatchReveal(address _batchReveal)
+        external
+        override
+        onlyOwnerOrRole(FACTORY_ROLE)
+    {
         batchReveal = IBatchReveal(_batchReveal);
     }
 

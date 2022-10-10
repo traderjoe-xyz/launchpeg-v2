@@ -162,6 +162,8 @@ contract LaunchpegFactory is
         ILaunchpeg(launchpeg).initialize(
             _name,
             _symbol,
+            address(this),
+            msg.sender,
             _projectOwner,
             _royaltyReceiver,
             _maxBatchSize,
@@ -171,16 +173,12 @@ contract LaunchpegFactory is
             _amountForDevs
         );
 
-        IBaseLaunchpeg(launchpeg).setBatchReveal(batchReveal);
-
         IBaseLaunchpeg(launchpeg).initializeJoeFee(
             joeFeePercent,
             joeFeeCollector
         );
-
-        IPendingOwnableUpgradeable(launchpeg).setPendingOwner(msg.sender);
-
-        _grantPauserRoleToFactory(launchpeg);
+        // TODO: update setBatchReveal() to only allow one-time initialization
+        IBaseLaunchpeg(launchpeg).setBatchReveal(batchReveal);
 
         emit LaunchpegCreated(
             launchpeg,
@@ -226,6 +224,8 @@ contract LaunchpegFactory is
         IFlatLaunchpeg(flatLaunchpeg).initialize(
             _name,
             _symbol,
+            address(this),
+            msg.sender,
             _projectOwner,
             _royaltyReceiver,
             _maxBatchSize,
@@ -234,16 +234,12 @@ contract LaunchpegFactory is
             _amountForAllowlist
         );
 
-        IBaseLaunchpeg(flatLaunchpeg).setBatchReveal(batchReveal);
-
         IBaseLaunchpeg(flatLaunchpeg).initializeJoeFee(
             joeFeePercent,
             joeFeeCollector
         );
-
-        IPendingOwnableUpgradeable(flatLaunchpeg).setPendingOwner(msg.sender);
-
-        _grantPauserRoleToFactory(flatLaunchpeg);
+        // TODO: update setBatchReveal() to only allow one-time initialization
+        IBaseLaunchpeg(flatLaunchpeg).setBatchReveal(batchReveal);
 
         emit FlatLaunchpegCreated(
             flatLaunchpeg,
@@ -357,14 +353,5 @@ contract LaunchpegFactory is
         onlyOwnerOrRole(LAUNCHPEG_PAUSER_ROLE)
     {
         ISafePausableUpgradeable(_launchpeg).pause();
-    }
-
-    /// @dev Grant pauser role for a Launchpeg collection to the factory
-    function _grantPauserRoleToFactory(address launchpeg) private {
-        bytes32 pauserRole = ISafePausableUpgradeable(launchpeg).PAUSER_ROLE();
-        IAccessControlUpgradeable(launchpeg).grantRole(
-            pauserRole,
-            address(this)
-        );
     }
 }

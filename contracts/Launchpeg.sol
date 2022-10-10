@@ -100,6 +100,8 @@ contract Launchpeg is BaseLaunchpeg, ILaunchpeg {
     /// Can only be called once
     /// @param _name ERC721 name
     /// @param _symbol ERC721 symbol
+    /// @param _factory Launchpeg factory
+    /// @param _owner The contract owner
     /// @param _projectOwner The project owner
     /// @param _royaltyReceiver Royalty fee collector
     /// @param _maxBatchSize Max amount of NFTs that can be minted at once
@@ -110,6 +112,8 @@ contract Launchpeg is BaseLaunchpeg, ILaunchpeg {
     function initialize(
         string memory _name,
         string memory _symbol,
+        address _factory,
+        address _owner,
         address _projectOwner,
         address _royaltyReceiver,
         uint256 _maxBatchSize,
@@ -121,6 +125,8 @@ contract Launchpeg is BaseLaunchpeg, ILaunchpeg {
         initializeBaseLaunchpeg(
             _name,
             _symbol,
+            _factory,
+            _owner,
             _projectOwner,
             _royaltyReceiver,
             _maxBatchSize,
