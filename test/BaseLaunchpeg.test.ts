@@ -50,13 +50,13 @@ describe('Launchpeg', () => {
     await batchReveal.initialize()
   }
 
-  const deployLaunchpeg = async () => {
+  const deployLaunchpeg = async (enableBatchReveal = true) => {
     launchpeg = await launchpegCF.deploy()
     await launchpeg.initialize(
       [
         'JoePEG',
         'JOEPEG',
-        batchReveal.address,
+        enableBatchReveal ? batchReveal.address : ethers.constants.AddressZero,
         config.maxBatchSize,
         config.collectionSize,
         config.amountForDevs,
@@ -65,12 +65,14 @@ describe('Launchpeg', () => {
       ],
       [dev.address, projectOwner.address, royaltyReceiver.address, joeFeeCollector.address, config.joeFeePercent]
     )
-    await batchReveal.configure(
-      launchpeg.address,
-      config.batchRevealSize,
-      config.batchRevealStart,
-      config.batchRevealInterval
-    )
+    if (enableBatchReveal) {
+      await batchReveal.configure(
+        launchpeg.address,
+        config.batchRevealSize,
+        config.batchRevealStart,
+        config.batchRevealInterval
+      )
+    }
   }
 
   beforeEach(async () => {
@@ -214,7 +216,9 @@ describe('Launchpeg', () => {
         )
       ).to.be.revertedWith('Launchpeg__InvalidJoeFeeCollector()')
     })
+  })
 
+  describe('Configure Launchpeg', () => {
     it('Should allow owner to set royalty info', async () => {
       const royaltyPercent = 500
       const royaltyCollector = bob
@@ -272,12 +276,26 @@ describe('Launchpeg', () => {
       expect(await launchpeg.unrevealedURI()).to.eq(config.unrevealedTokenURI)
     })
 
-    it('Should allow owner to set batch reveal address', async () => {
-      await expect(launchpeg.connect(alice).setBatchReveal(batchReveal.address)).to.be.revertedWith(
+    it('Should allow owner to initialize batch reveal address only once', async () => {
+      await deployLaunchpeg(false)
+
+      await expect(launchpeg.connect(alice).initializeBatchReveal(batchReveal.address)).to.be.revertedWith(
         'PendingOwnableUpgradeable__NotOwner()'
       )
 
-      await launchpeg.setBatchReveal(batchReveal.address)
+      await launchpeg.initializeBatchReveal(batchReveal.address)
+      expect(await launchpeg.batchReveal()).to.eq(batchReveal.address)
+
+      await expect(launchpeg.initializeBatchReveal(ethers.constants.AddressZero)).to.be.revertedWith(
+        'Launchpeg__BatchRevealAlreadyInitialized()'
+      )
+    })
+
+    it('Should revert if owner initializes batch reveal after sale ends', async () => {
+      await deployLaunchpeg(false)
+      await initializePhasesLaunchpeg(launchpeg, config, Phase.Ended)
+
+      await expect(launchpeg.initializeBatchReveal(batchReveal.address)).to.be.revertedWith('Launchpeg__WrongPhase()')
     })
   })
 
@@ -760,7 +778,7 @@ describe('Launchpeg', () => {
 
   describe('Batch reveal disabled', () => {
     beforeEach(async () => {
-      await launchpeg.setBatchReveal(ethers.constants.AddressZero)
+      await deployLaunchpeg(false)
     })
 
     it('Should reveal NFTs immediately', async () => {

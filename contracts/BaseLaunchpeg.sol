@@ -276,6 +276,25 @@ abstract contract BaseLaunchpeg is
         emit JoeFeeInitialized(_joeFeePercent, _joeFeeCollector);
     }
 
+    /// @notice Initialize batch reveal. Leave undefined to disable
+    /// batch reveal for the collection.
+    /// @dev Can only be set once. Cannot be initialized once sale has ended.
+    /// @param _batchReveal Batch reveal contract address
+    function initializeBatchReveal(address _batchReveal)
+        external
+        override
+        onlyOwner
+    {
+        if (address(batchReveal) != address(0)) {
+            revert Launchpeg__BatchRevealAlreadyInitialized();
+        }
+        // Disable once sale has ended
+        if (publicSaleEndTime > 0 && block.timestamp >= publicSaleEndTime) {
+            revert Launchpeg__WrongPhase();
+        }
+        batchReveal = IBatchReveal(_batchReveal);
+    }
+
     /// @notice Set the royalty fee
     /// @param _receiver Royalty fee collector
     /// @param _feePercent Royalty fee percent in basis point
@@ -401,12 +420,6 @@ abstract contract BaseLaunchpeg is
     {
         withdrawAVAXStartTime = _withdrawAVAXStartTime;
         emit WithdrawAVAXStartTimeSet(_withdrawAVAXStartTime);
-    }
-
-    /// @notice Update batch reveal
-    /// @dev Can be set to zero address to disable batch reveal
-    function setBatchReveal(address _batchReveal) external override onlyOwner {
-        batchReveal = IBatchReveal(_batchReveal);
     }
 
     /// @notice Mint NFTs to the project owner

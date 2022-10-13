@@ -7,6 +7,7 @@ error LaunchpegFactory__InvalidImplementation();
 
 // Launchpeg
 error Launchpeg__AllowlistBeforePreMint();
+error Launchpeg__BatchRevealAlreadyInitialized();
 error Launchpeg__BatchRevealDisabled();
 error Launchpeg__BatchRevealNotInitialized();
 error Launchpeg__BatchRevealStarted();
