@@ -140,6 +140,7 @@ contract LaunchpegFactory is
     /// @param _amountForAuction Amount of NFTs available for the auction (e.g 8000)
     /// @param _amountForAllowlist Amount of NFTs available for the allowlist mint (e.g 1000)
     /// @param _amountForDevs Amount of NFTs reserved for `projectOwner` (e.g 200)
+    /// @param _enableBatchReveal Flag to enable batch reveal for the collection
     /// @return launchpeg New Launchpeg address
     function createLaunchpeg(
         string memory _name,
@@ -150,7 +151,8 @@ contract LaunchpegFactory is
         uint256 _collectionSize,
         uint256 _amountForAuction,
         uint256 _amountForAllowlist,
-        uint256 _amountForDevs
+        uint256 _amountForDevs,
+        bool _enableBatchReveal
     ) external override onlyOwner returns (address) {
         address launchpeg = Clones.clone(launchpegImplementation);
 
@@ -162,7 +164,7 @@ contract LaunchpegFactory is
                 .CollectionData({
                     name: _name,
                     symbol: _symbol,
-                    batchReveal: batchReveal,
+                    batchReveal: _enableBatchReveal ? batchReveal : address(0),
                     maxBatchSize: _maxBatchSize,
                     collectionSize: _collectionSize,
                     amountForDevs: _amountForDevs,
@@ -205,6 +207,7 @@ contract LaunchpegFactory is
     /// @param _collectionSize The collection size (e.g 10000)
     /// @param _amountForDevs Amount of NFTs reserved for `projectOwner` (e.g 200)
     /// @param _amountForAllowlist Amount of NFTs available for the allowlist mint (e.g 1000)
+    /// @param _enableBatchReveal Flag to enable batch reveal for the collection
     /// @return flatLaunchpeg New FlatLaunchpeg address
     function createFlatLaunchpeg(
         string memory _name,
@@ -214,7 +217,8 @@ contract LaunchpegFactory is
         uint256 _maxBatchSize,
         uint256 _collectionSize,
         uint256 _amountForDevs,
-        uint256 _amountForAllowlist
+        uint256 _amountForAllowlist,
+        bool _enableBatchReveal
     ) external override onlyOwner returns (address) {
         address flatLaunchpeg = Clones.clone(flatLaunchpegImplementation);
 
@@ -226,7 +230,7 @@ contract LaunchpegFactory is
                 .CollectionData({
                     name: _name,
                     symbol: _symbol,
-                    batchReveal: batchReveal,
+                    batchReveal: _enableBatchReveal ? batchReveal : address(0),
                     maxBatchSize: _maxBatchSize,
                     collectionSize: _collectionSize,
                     amountForDevs: _amountForDevs,
