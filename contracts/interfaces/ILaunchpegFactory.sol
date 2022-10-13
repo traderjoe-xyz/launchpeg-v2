@@ -41,7 +41,8 @@ interface ILaunchpegFactory {
         uint256 _collectionSize,
         uint256 _amountForAuction,
         uint256 _amountForAllowlist,
-        uint256 _amountForDevs
+        uint256 _amountForDevs,
+        bool _enableBatchReveal
     ) external returns (address);
 
     function createFlatLaunchpeg(
@@ -52,7 +53,8 @@ interface ILaunchpegFactory {
         uint256 _maxBatchSize,
         uint256 _collectionSize,
         uint256 _amountForDevs,
-        uint256 _amountForAllowlist
+        uint256 _amountForAllowlist,
+        bool _enableBatchReveal
     ) external returns (address);
 
     function setLaunchpegImplementation(address _launchpegImplementation)
