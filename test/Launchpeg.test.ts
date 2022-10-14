@@ -391,8 +391,7 @@ describe('Launchpeg', () => {
 
       await launchpeg.connect(projectOwner).devMint(5)
       await launchpeg.connect(alice).auctionMint(3, { value: config.startPrice.mul(3) })
-      // Alice will mint up to allocation (5) even though she sends more (3+3)
-      await launchpeg.connect(alice).auctionMint(3, { value: config.startPrice.mul(3) })
+      await launchpeg.connect(alice).auctionMint(2, { value: config.startPrice.mul(2) })
       expect(await launchpeg.balanceOf(alice.address)).to.eq(5)
 
       await expect(launchpeg.connect(bob).auctionMint(5, { value: config.startPrice.mul(5) })).to.be.revertedWith(

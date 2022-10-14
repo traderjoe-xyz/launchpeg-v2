@@ -460,10 +460,10 @@ abstract contract BaseLaunchpeg is
         if (_quantity > allowlist[msg.sender]) {
             revert Launchpeg__NotEligibleForAllowlistMint();
         }
-        if (
-            (_totalSupplyWithPreMint() + _quantity > collectionSize) ||
-            (amountMintedDuringPreMint + _quantity > amountForAllowlist)
-        ) {
+        // initialize() method checks: amountForDevs + amountForAllowlist <= collectionSize
+        // this means that if pre-mint does not exceed amountForAllowlist there will be
+        // sufficient supply for devMint()
+        if (amountMintedDuringPreMint + _quantity > amountForAllowlist) {
             revert Launchpeg__MaxSupplyReached();
         }
         allowlist[msg.sender] -= _quantity;
@@ -472,7 +472,7 @@ abstract contract BaseLaunchpeg is
         preMintQueue.push(
             PreMintData({sender: msg.sender, quantity: _quantity})
         );
-        uint256 price = _preMintPrice();
+        uint256 price = _getAllowlistPrice();
         uint256 totalCost = price * _quantity;
         emit PreMint(msg.sender, _quantity, price);
         _refundIfOver(totalCost);
@@ -488,7 +488,7 @@ abstract contract BaseLaunchpeg is
             revert Launchpeg__MaxSupplyForBatchMintReached();
         }
         uint256 remQuantity = _maxQuantity;
-        uint256 price = _preMintPrice();
+        uint256 price = _getAllowlistPrice();
         address sender;
         uint256 quantity;
         uint256 i = preMintQueueIdx;
@@ -519,7 +519,71 @@ abstract contract BaseLaunchpeg is
         preMintQueueIdx = i;
     }
 
-    function _preMintPrice() internal view virtual returns (uint256);
+    function _allowlistMint(uint256 _quantity) internal {
+        if (_quantity > allowlist[msg.sender]) {
+            revert Launchpeg__NotEligibleForAllowlistMint();
+        }
+        // initialize() method checks: amountForDevs + amountForAllowlist <= collectionSize
+        // this means that if allowlist mint does not exceed amountForAllowlist there will be
+        // sufficient supply for devMint()
+        if (
+            amountMintedDuringPreMint +
+                amountMintedDuringAllowlist +
+                _quantity >
+            amountForAllowlist
+        ) {
+            revert Launchpeg__MaxSupplyReached();
+        }
+        allowlist[msg.sender] -= _quantity;
+        uint256 price = _getAllowlistPrice();
+        uint256 totalCost = price * _quantity;
+
+        _mint(msg.sender, _quantity, "", false);
+        amountMintedDuringAllowlist += _quantity;
+        emit Mint(
+            msg.sender,
+            _quantity,
+            price,
+            _totalMinted() - _quantity,
+            Phase.Allowlist
+        );
+        _refundIfOver(totalCost);
+    }
+
+    function _publicSaleMint(uint256 _quantity) internal {
+        if (
+            numberMintedWithPreMint(msg.sender) + _quantity >
+            maxPerAddressDuringMint
+        ) {
+            revert Launchpeg__CanNotMintThisMany();
+        }
+        uint256 remainingDevAmt = amountForDevs - amountMintedByDevs;
+        if (
+            _totalSupplyWithPreMint() + remainingDevAmt + _quantity >
+            collectionSize
+        ) {
+            revert Launchpeg__MaxSupplyReached();
+        }
+        uint256 price = _getPublicSalePrice();
+        uint256 total = price * _quantity;
+
+        _mint(msg.sender, _quantity, "", false);
+        amountMintedDuringPublicSale += _quantity;
+        emit Mint(
+            msg.sender,
+            _quantity,
+            price,
+            _totalMinted() - _quantity,
+            Phase.PublicSale
+        );
+        _refundIfOver(total);
+    }
+
+    /// @dev Returns allowlist price. Used by mint methods.
+    function _getAllowlistPrice() internal view virtual returns (uint256);
+
+    /// @dev Returns public sale price. Used by mint methods.
+    function _getPublicSalePrice() internal view virtual returns (uint256);
 
     /// @notice Withdraw AVAX to the given recipient
     /// @param _to Recipient of the earned AVAX

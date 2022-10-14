@@ -256,19 +256,19 @@ contract Launchpeg is BaseLaunchpeg, ILaunchpeg {
         whenNotPaused
         atPhase(Phase.DutchAuction)
     {
-        uint256 remainingSupply = (amountForAuction + amountMintedByDevs) -
-            totalSupply();
-        if (remainingSupply == 0) {
-            revert Launchpeg__MaxSupplyReached();
-        }
-        if (remainingSupply < _quantity) {
-            _quantity = remainingSupply;
-        }
         if (
             numberMintedWithPreMint(msg.sender) + _quantity >
             maxPerAddressDuringMint
         ) {
             revert Launchpeg__CanNotMintThisMany();
+        }
+        // initialize() method checks:
+        // amountForDevs + amountForAuction + amountForAllowlist <= collectionSize
+        // this means that if auction and allowlist mints do not exceed
+        // amountForAuction and amountForAllowlist respectively, there will be
+        // sufficient supply for devMint()
+        if (amountMintedDuringAuction + _quantity > amountForAuction) {
+            revert Launchpeg__MaxSupplyReached();
         }
         lastAuctionPrice = getAuctionPrice(auctionSaleStartTime);
         uint256 totalCost = lastAuctionPrice * _quantity;
@@ -316,32 +316,7 @@ contract Launchpeg is BaseLaunchpeg, ILaunchpeg {
         whenNotPaused
         atPhase(Phase.Allowlist)
     {
-        if (_quantity > allowlist[msg.sender]) {
-            revert Launchpeg__NotEligibleForAllowlistMint();
-        }
-        if (
-            (_totalSupplyWithPreMint() + _quantity > collectionSize) ||
-            (amountMintedDuringPreMint +
-                amountMintedDuringAllowlist +
-                _quantity >
-                amountForAllowlist)
-        ) {
-            revert Launchpeg__MaxSupplyReached();
-        }
-        allowlist[msg.sender] -= _quantity;
-        uint256 price = allowlistPrice();
-        uint256 totalCost = price * _quantity;
-
-        _mint(msg.sender, _quantity, "", false);
-        amountMintedDuringAllowlist += _quantity;
-        emit Mint(
-            msg.sender,
-            _quantity,
-            price,
-            _totalMinted() - _quantity,
-            Phase.Allowlist
-        );
-        _refundIfOver(totalCost);
+        _allowlistMint(_quantity);
     }
 
     /// @notice Mint NFTs during the public sale
@@ -354,27 +329,7 @@ contract Launchpeg is BaseLaunchpeg, ILaunchpeg {
         whenNotPaused
         atPhase(Phase.PublicSale)
     {
-        if (
-            numberMintedWithPreMint(msg.sender) + _quantity >
-            maxPerAddressDuringMint
-        ) {
-            revert Launchpeg__CanNotMintThisMany();
-        }
-        if (_totalSupplyWithPreMint() + _quantity > collectionSize) {
-            revert Launchpeg__MaxSupplyReached();
-        }
-        uint256 price = salePrice();
-
-        _mint(msg.sender, _quantity, "", false);
-        amountMintedDuringPublicSale += _quantity;
-        emit Mint(
-            msg.sender,
-            _quantity,
-            price,
-            _totalMinted() - _quantity,
-            Phase.PublicSale
-        );
-        _refundIfOver(price * _quantity);
+        _publicSaleMint(_quantity);
     }
 
     /// @notice Returns the current price of the dutch auction
@@ -401,19 +356,13 @@ contract Launchpeg is BaseLaunchpeg, ILaunchpeg {
     /// @notice Returns the price of the allowlist mint
     /// @return allowlistSalePrice Mint List sale price
     function allowlistPrice() public view override returns (uint256) {
-        return
-            lastAuctionPrice -
-            (lastAuctionPrice * allowlistDiscountPercent) /
-            10000;
+        return _getAllowlistPrice();
     }
 
     /// @notice Returns the price of the public sale
     /// @return publicSalePrice Public sale price
     function salePrice() public view override returns (uint256) {
-        return
-            lastAuctionPrice -
-            (lastAuctionPrice * publicSaleDiscountPercent) /
-            10000;
+        return _getPublicSalePrice();
     }
 
     /// @notice Returns the current phase
@@ -473,8 +422,19 @@ contract Launchpeg is BaseLaunchpeg, ILaunchpeg {
             super.supportsInterface(_interfaceId);
     }
 
-    /// @dev Returns pre-mint price. Used by _preMint() and _batchMintPreMintedNFTs() methods.
-    function _preMintPrice() internal view override returns (uint256) {
-        return allowlistPrice();
+    /// @dev Returns allowlist price. Used by mint methods.
+    function _getAllowlistPrice() internal view override returns (uint256) {
+        return
+            lastAuctionPrice -
+            (lastAuctionPrice * allowlistDiscountPercent) /
+            10000;
+    }
+
+    /// @dev Returns public sale price. Used by mint methods.
+    function _getPublicSalePrice() internal view override returns (uint256) {
+        return
+            lastAuctionPrice -
+            (lastAuctionPrice * publicSaleDiscountPercent) /
+            10000;
     }
 }

@@ -669,6 +669,22 @@ describe('Launchpeg', () => {
       allowlistPrice = config.startPrice.sub(discount)
     })
 
+    it('Should not allow user to mint more than collection size - dev amount', async () => {
+      config.collectionSize = 100
+      config.amountForDevs = 95
+      config.amountForAuction = 5
+      config.amountForAllowlist = 0
+      config.maxPerAddressDuringMint = 5
+      config.batchRevealSize = 5
+      await deployLaunchpeg()
+      await initializePhasesLaunchpeg(launchpeg, config, Phase.PublicSale)
+
+      await launchpeg.connect(alice).publicSaleMint(5, { value: allowlistPrice.mul(5) })
+      await expect(launchpeg.connect(bob).publicSaleMint(5, { value: allowlistPrice.mul(5) })).to.be.revertedWith(
+        'Launchpeg__MaxSupplyReached()'
+      )
+    })
+
     it('Should allow any user to batch mint', async () => {
       await initializePhasesLaunchpeg(launchpeg, config, Phase.PreMint)
       await launchpeg.connect(dev).seedAllowlist([alice.address], [5])
