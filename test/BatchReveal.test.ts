@@ -60,7 +60,7 @@ describe('BatchReveal', () => {
         'JoePEG',
         'JOEPEG',
         enableBatchReveal ? batchReveal.address : ethers.constants.AddressZero,
-        config.maxBatchSize,
+        config.maxPerAddressDuringMint,
         config.collectionSize,
         config.amountForDevs,
         config.amountForAuction,

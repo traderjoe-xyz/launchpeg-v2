@@ -22,7 +22,7 @@ interface IBaseLaunchpeg is IERC721Upgradeable, IERC721MetadataUpgradeable {
     /// @notice Collection data to initialize Launchpeg
     /// @param name ERC721 name
     /// @param symbol ERC721 symbol
-    /// @param maxBatchSize Max amount of NFTs that can be minted at once
+    /// @param maxPerAddressDuringMint Max amount of NFTs an address can mint
     /// @param collectionSize The collection size (e.g 10000)
     /// @param amountForDevs Amount of NFTs reserved for `projectOwner` (e.g 200)
     /// @param amountForAuction Amount of NFTs available for the auction (e.g 8000)
@@ -31,7 +31,7 @@ interface IBaseLaunchpeg is IERC721Upgradeable, IERC721MetadataUpgradeable {
         string name;
         string symbol;
         address batchReveal;
-        uint256 maxBatchSize;
+        uint256 maxPerAddressDuringMint;
         uint256 collectionSize;
         uint256 amountForDevs;
         uint256 amountForAuction;
@@ -63,8 +63,6 @@ interface IBaseLaunchpeg is IERC721Upgradeable, IERC721MetadataUpgradeable {
     function amountForDevs() external view returns (uint256);
 
     function amountForAllowlist() external view returns (uint256);
-
-    function maxBatchSize() external view returns (uint256);
 
     function maxPerAddressDuringMint() external view returns (uint256);
 

@@ -41,9 +41,6 @@ abstract contract BaseLaunchpeg is
     /// @notice Amount of NFTs available for the allowlist mint (e.g 1000)
     uint256 public override amountForAllowlist;
 
-    /// @notice Max amount of NFTs that can be minted at once
-    uint256 public override maxBatchSize;
-
     /// @notice Max amount of NFTs an address can mint
     uint256 public override maxPerAddressDuringMint;
 
@@ -239,8 +236,11 @@ abstract contract BaseLaunchpeg is
         ) {
             revert Launchpeg__LargerCollectionSizeNeeded();
         }
-        if (_collectionData.maxBatchSize > _collectionData.collectionSize) {
-            revert Launchpeg__InvalidMaxBatchSize();
+        if (
+            _collectionData.maxPerAddressDuringMint >
+            _collectionData.collectionSize
+        ) {
+            revert Launchpeg__InvalidMaxPerAddressDuringMint();
         }
 
         // Default royalty is 5%
@@ -248,9 +248,8 @@ abstract contract BaseLaunchpeg is
         _initializeJoeFee(_ownerData.joeFeePercent, _ownerData.joeFeeCollector);
 
         batchReveal = IBatchReveal(_collectionData.batchReveal);
-        maxBatchSize = _collectionData.maxBatchSize;
         collectionSize = _collectionData.collectionSize;
-        maxPerAddressDuringMint = _collectionData.maxBatchSize;
+        maxPerAddressDuringMint = _collectionData.maxPerAddressDuringMint;
         amountForDevs = _collectionData.amountForDevs;
         amountForAllowlist = _collectionData.amountForAllowlist;
 
@@ -438,6 +437,9 @@ abstract contract BaseLaunchpeg is
             revert Launchpeg__MaxSupplyForDevReached();
         }
         amountMintedByDevs = amountMintedByDevs + _quantity;
+        // Max no. of NFTs to mint in a batch. Used to control gas costs
+        // for subsequent transfers in ERC721A contracts.
+        uint256 maxBatchSize = maxPerAddressDuringMint;
         uint256 numChunks = _quantity / maxBatchSize;
         for (uint256 i; i < numChunks; i++) {
             _mint(msg.sender, maxBatchSize, "", false);

@@ -22,7 +22,7 @@ error Launchpeg__InvalidCallbackGasLimit();
 error Launchpeg__InvalidCoordinator();
 error Launchpeg__InvalidKeyHash();
 error Launchpeg__InvalidJoeFeeCollector();
-error Launchpeg__InvalidMaxBatchSize();
+error Launchpeg__InvalidMaxPerAddressDuringMint();
 error Launchpeg__InvalidOwner();
 error Launchpeg__InvalidProjectOwner();
 error Launchpeg__InvalidPercent();
