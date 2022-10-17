@@ -77,14 +77,7 @@ describe('LaunchpegFactory', () => {
         config.amountForAuction,
         config.amountForAllowlist,
       ],
-      [
-        ethers.constants.AddressZero,
-        dev.address,
-        projectOwner.address,
-        royaltyReceiver.address,
-        joeFeeCollector.address,
-        config.joeFeePercent,
-      ]
+      [dev.address, projectOwner.address, royaltyReceiver.address, joeFeeCollector.address, config.joeFeePercent]
     )
   }
 
@@ -102,14 +95,7 @@ describe('LaunchpegFactory', () => {
         0,
         config.amountForAllowlist,
       ],
-      [
-        ethers.constants.AddressZero,
-        dev.address,
-        projectOwner.address,
-        royaltyReceiver.address,
-        joeFeeCollector.address,
-        config.joeFeePercent,
-      ]
+      [dev.address, projectOwner.address, royaltyReceiver.address, joeFeeCollector.address, config.joeFeePercent]
     )
   }
 

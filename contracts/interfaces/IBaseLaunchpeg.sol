@@ -39,14 +39,12 @@ interface IBaseLaunchpeg is IERC721Upgradeable, IERC721MetadataUpgradeable {
     }
 
     /// @notice Collection owner data to initialize Launchpeg
-    /// @param factory Launchpeg factory
     /// @param owner The contract owner
     /// @param projectOwner The project owner
     /// @param royaltyReceiver Royalty fee collector
     /// @param joeFeeCollector The address to which the fees on the sale will be sent
     /// @param joeFeePercent The fees collected by the fee collector on the sale benefits
     struct CollectionOwnerData {
-        address factory;
         address owner;
         address projectOwner;
         address royaltyReceiver;
