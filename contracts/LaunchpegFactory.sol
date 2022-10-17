@@ -159,26 +159,29 @@ contract LaunchpegFactory is
         isLaunchpeg[0][launchpeg] = true;
         allLaunchpegs[0].push(launchpeg);
 
-        ILaunchpeg(launchpeg).initialize(
-            _name,
-            _symbol,
-            address(this),
-            msg.sender,
-            _projectOwner,
-            _royaltyReceiver,
-            _maxBatchSize,
-            _collectionSize,
-            _amountForAuction,
-            _amountForAllowlist,
-            _amountForDevs
-        );
-
-        IBaseLaunchpeg(launchpeg).initializeJoeFee(
-            joeFeePercent,
-            joeFeeCollector
-        );
-        // TODO: update setBatchReveal() to only allow one-time initialization
-        IBaseLaunchpeg(launchpeg).setBatchReveal(batchReveal);
+        {
+            IBaseLaunchpeg.CollectionData memory collectionData = IBaseLaunchpeg
+                .CollectionData({
+                    name: _name,
+                    symbol: _symbol,
+                    batchReveal: batchReveal,
+                    maxBatchSize: _maxBatchSize,
+                    collectionSize: _collectionSize,
+                    amountForDevs: _amountForDevs,
+                    amountForAuction: _amountForAuction,
+                    amountForAllowlist: _amountForAllowlist
+                });
+            IBaseLaunchpeg.CollectionOwnerData memory ownerData = IBaseLaunchpeg
+                .CollectionOwnerData({
+                    factory: address(this),
+                    owner: msg.sender,
+                    projectOwner: _projectOwner,
+                    royaltyReceiver: _royaltyReceiver,
+                    joeFeeCollector: joeFeeCollector,
+                    joeFeePercent: joeFeePercent
+                });
+            ILaunchpeg(launchpeg).initialize(collectionData, ownerData);
+        }
 
         emit LaunchpegCreated(
             launchpeg,
@@ -221,25 +224,30 @@ contract LaunchpegFactory is
         isLaunchpeg[1][flatLaunchpeg] = true;
         allLaunchpegs[1].push(flatLaunchpeg);
 
-        IFlatLaunchpeg(flatLaunchpeg).initialize(
-            _name,
-            _symbol,
-            address(this),
-            msg.sender,
-            _projectOwner,
-            _royaltyReceiver,
-            _maxBatchSize,
-            _collectionSize,
-            _amountForDevs,
-            _amountForAllowlist
-        );
-
-        IBaseLaunchpeg(flatLaunchpeg).initializeJoeFee(
-            joeFeePercent,
-            joeFeeCollector
-        );
-        // TODO: update setBatchReveal() to only allow one-time initialization
-        IBaseLaunchpeg(flatLaunchpeg).setBatchReveal(batchReveal);
+        {
+            IBaseLaunchpeg.CollectionData memory collectionData = IBaseLaunchpeg
+                .CollectionData({
+                    name: _name,
+                    symbol: _symbol,
+                    batchReveal: batchReveal,
+                    maxBatchSize: _maxBatchSize,
+                    collectionSize: _collectionSize,
+                    amountForDevs: _amountForDevs,
+                    // set 0 auction amount for FlatLaunchpeg
+                    amountForAuction: 0,
+                    amountForAllowlist: _amountForAllowlist
+                });
+            IBaseLaunchpeg.CollectionOwnerData memory ownerData = IBaseLaunchpeg
+                .CollectionOwnerData({
+                    factory: address(this),
+                    owner: msg.sender,
+                    projectOwner: _projectOwner,
+                    royaltyReceiver: _royaltyReceiver,
+                    joeFeeCollector: joeFeeCollector,
+                    joeFeePercent: joeFeePercent
+                });
+            IFlatLaunchpeg(flatLaunchpeg).initialize(collectionData, ownerData);
+        }
 
         emit FlatLaunchpegCreated(
             flatLaunchpeg,

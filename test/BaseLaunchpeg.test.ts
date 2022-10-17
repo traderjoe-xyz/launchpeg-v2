@@ -19,6 +19,7 @@ describe('Launchpeg', () => {
   let bob: SignerWithAddress
   let projectOwner: SignerWithAddress
   let royaltyReceiver: SignerWithAddress
+  let joeFeeCollector: SignerWithAddress
 
   before(async () => {
     launchpegCF = await ethers.getContractFactory('Launchpeg')
@@ -30,6 +31,7 @@ describe('Launchpeg', () => {
     bob = signers[2]
     projectOwner = signers[3]
     royaltyReceiver = signers[4]
+    joeFeeCollector = signers[5]
 
     await network.provider.request({
       method: 'hardhat_reset',
@@ -51,17 +53,24 @@ describe('Launchpeg', () => {
   const deployLaunchpeg = async () => {
     launchpeg = await launchpegCF.deploy()
     await launchpeg.initialize(
-      'JoePEG',
-      'JOEPEG',
-      ethers.constants.AddressZero,
-      dev.address,
-      projectOwner.address,
-      royaltyReceiver.address,
-      config.maxBatchSize,
-      config.collectionSize,
-      config.amountForAuction,
-      config.amountForAllowlist,
-      config.amountForDevs
+      [
+        'JoePEG',
+        'JOEPEG',
+        batchReveal.address,
+        config.maxBatchSize,
+        config.collectionSize,
+        config.amountForDevs,
+        config.amountForAuction,
+        config.amountForAllowlist,
+      ],
+      [
+        ethers.constants.AddressZero,
+        dev.address,
+        projectOwner.address,
+        royaltyReceiver.address,
+        joeFeeCollector.address,
+        config.joeFeePercent,
+      ]
     )
     await batchReveal.configure(
       launchpeg.address,
@@ -69,7 +78,6 @@ describe('Launchpeg', () => {
       config.batchRevealStart,
       config.batchRevealInterval
     )
-    await launchpeg.setBatchReveal(batchReveal.address)
   }
 
   beforeEach(async () => {
@@ -88,17 +96,24 @@ describe('Launchpeg', () => {
 
       await expect(
         launchpeg.initialize(
-          'JoePEG',
-          'JOEPEG',
-          ethers.constants.AddressZero,
-          dev.address,
-          projectOwner.address,
-          royaltyReceiver.address,
-          config.maxBatchSize,
-          config.collectionSize,
-          config.amountForAuction,
-          config.amountForAllowlist,
-          config.amountForDevs
+          [
+            'JoePEG',
+            'JOEPEG',
+            batchReveal.address,
+            config.maxBatchSize,
+            config.collectionSize,
+            config.amountForDevs,
+            config.amountForAuction,
+            config.amountForAllowlist,
+          ],
+          [
+            ethers.constants.AddressZero,
+            dev.address,
+            projectOwner.address,
+            royaltyReceiver.address,
+            joeFeeCollector.address,
+            config.joeFeePercent,
+          ]
         )
       ).to.be.revertedWith('Initializable: contract is already initialized')
     })
@@ -107,17 +122,24 @@ describe('Launchpeg', () => {
       launchpeg = await launchpegCF.deploy()
       await expect(
         launchpeg.initialize(
-          'JoePEG',
-          'JOEPEG',
-          ethers.constants.AddressZero,
-          ethers.constants.AddressZero,
-          projectOwner.address,
-          royaltyReceiver.address,
-          config.maxBatchSize,
-          config.collectionSize,
-          config.amountForAuction,
-          config.amountForAllowlist,
-          config.amountForDevs
+          [
+            'JoePEG',
+            'JOEPEG',
+            batchReveal.address,
+            config.maxBatchSize,
+            config.collectionSize,
+            config.amountForDevs,
+            config.amountForAuction,
+            config.amountForAllowlist,
+          ],
+          [
+            ethers.constants.AddressZero,
+            ethers.constants.AddressZero,
+            projectOwner.address,
+            royaltyReceiver.address,
+            joeFeeCollector.address,
+            config.joeFeePercent,
+          ]
         )
       ).to.be.revertedWith('Launchpeg__InvalidOwner()')
     })
@@ -126,17 +148,24 @@ describe('Launchpeg', () => {
       launchpeg = await launchpegCF.deploy()
       await expect(
         launchpeg.initialize(
-          'JoePEG',
-          'JOEPEG',
-          ethers.constants.AddressZero,
-          dev.address,
-          ethers.constants.AddressZero,
-          royaltyReceiver.address,
-          config.maxBatchSize,
-          config.collectionSize,
-          config.amountForAuction,
-          config.amountForAllowlist,
-          config.amountForDevs
+          [
+            'JoePEG',
+            'JOEPEG',
+            batchReveal.address,
+            config.maxBatchSize,
+            config.collectionSize,
+            config.amountForDevs,
+            config.amountForAuction,
+            config.amountForAllowlist,
+          ],
+          [
+            ethers.constants.AddressZero,
+            dev.address,
+            ethers.constants.AddressZero,
+            royaltyReceiver.address,
+            joeFeeCollector.address,
+            config.joeFeePercent,
+          ]
         )
       ).to.be.revertedWith('Launchpeg__InvalidProjectOwner()')
     })
@@ -160,37 +189,60 @@ describe('Launchpeg', () => {
   })
 
   describe('Configure Launchpeg', () => {
-    it('Should allow owner to initialize fee configuration only once', async () => {
-      const feePercent = 200
-      const feeCollector = bob.address
-
-      await expect(launchpeg.connect(alice).initializeJoeFee(feePercent, feeCollector)).to.be.revertedWith(
-        'SafeAccessControlEnumerableUpgradeable__SenderMissingRoleAndIsNotOwner'
-      )
-
-      await launchpeg.initializeJoeFee(feePercent, feeCollector)
-      expect(await launchpeg.joeFeePercent()).to.eq(feePercent)
-      expect(await launchpeg.joeFeeCollector()).to.eq(feeCollector)
-
-      await expect(launchpeg.initializeJoeFee(feePercent, feeCollector)).to.be.revertedWith(
-        'Launchpeg__JoeFeeAlreadyInitialized()'
-      )
-    })
-
     it('Should revert if fee percent is invalid', async () => {
-      const feePercent = 10001
-      const feeCollector = bob.address
-      await expect(launchpeg.initializeJoeFee(feePercent, feeCollector)).to.be.revertedWith(
-        'Launchpeg__InvalidPercent()'
-      )
+      const feePercent = 10_001
+
+      launchpeg = await launchpegCF.deploy()
+      await expect(
+        launchpeg.initialize(
+          [
+            'JoePEG',
+            'JOEPEG',
+            batchReveal.address,
+            config.maxBatchSize,
+            config.collectionSize,
+            config.amountForDevs,
+            config.amountForAuction,
+            config.amountForAllowlist,
+          ],
+          [
+            ethers.constants.AddressZero,
+            dev.address,
+            projectOwner.address,
+            royaltyReceiver.address,
+            joeFeeCollector.address,
+            feePercent,
+          ]
+        )
+      ).to.be.revertedWith('Launchpeg__InvalidPercent()')
     })
 
     it('Should revert if fee collector is zero address', async () => {
-      let feePercent = 100
-      let feeCollector = ethers.constants.AddressZero
-      await expect(launchpeg.initializeJoeFee(feePercent, feeCollector)).to.be.revertedWith(
-        'Launchpeg__InvalidJoeFeeCollector()'
-      )
+      const feeCollector = ethers.constants.AddressZero
+
+      launchpeg = await launchpegCF.deploy()
+      await expect(
+        launchpeg.initialize(
+          [
+            'JoePEG',
+            'JOEPEG',
+            batchReveal.address,
+            config.maxBatchSize,
+            config.collectionSize,
+            config.amountForDevs,
+            config.amountForAuction,
+            config.amountForAllowlist,
+          ],
+          [
+            ethers.constants.AddressZero,
+            dev.address,
+            projectOwner.address,
+            royaltyReceiver.address,
+            feeCollector,
+            config.joeFeePercent,
+          ]
+        )
+      ).to.be.revertedWith('Launchpeg__InvalidJoeFeeCollector()')
     })
 
     it('Should allow owner to set royalty info', async () => {
@@ -252,7 +304,7 @@ describe('Launchpeg', () => {
 
     it('Should allow owner to set batch reveal address', async () => {
       await expect(launchpeg.connect(alice).setBatchReveal(batchReveal.address)).to.be.revertedWith(
-        'SafeAccessControlEnumerableUpgradeable__SenderMissingRoleAndIsNotOwner'
+        'PendingOwnableUpgradeable__NotOwner()'
       )
 
       await launchpeg.setBatchReveal(batchReveal.address)
@@ -678,9 +730,11 @@ describe('Launchpeg', () => {
       await launchpeg.connect(bob).publicSaleMint(4, { value: publicSalePrice.mul(4) })
 
       const initialDevBalance = await dev.getBalance()
+      const total = publicSalePrice.mul(9)
+      const fee = total.mul(config.joeFeePercent).div(10000)
       await launchpeg.connect(dev).withdrawAVAX(dev.address)
       expect(await dev.getBalance()).to.be.closeTo(
-        initialDevBalance.add(publicSalePrice.mul(9)),
+        initialDevBalance.add(total.sub(fee)),
         ethers.utils.parseEther('0.01')
       )
     })
@@ -690,9 +744,11 @@ describe('Launchpeg', () => {
       await launchpeg.connect(bob).publicSaleMint(4, { value: publicSalePrice.mul(4) })
 
       const initialBalance = await projectOwner.getBalance()
+      const total = publicSalePrice.mul(9)
+      const fee = total.mul(config.joeFeePercent).div(10000)
       await launchpeg.connect(projectOwner).withdrawAVAX(projectOwner.address)
       expect(await projectOwner.getBalance()).to.be.closeTo(
-        initialBalance.add(publicSalePrice.mul(9)),
+        initialBalance.add(total.sub(fee)),
         ethers.utils.parseEther('0.01')
       )
     })
@@ -714,9 +770,8 @@ describe('Launchpeg', () => {
     })
 
     it('Should send fee correctly to fee collector address', async () => {
-      const feePercent = 200
-      const feeCollector = bob
-      await launchpeg.initializeJoeFee(feePercent, feeCollector.address)
+      const feePercent = config.joeFeePercent
+      const feeCollector = joeFeeCollector
 
       const total = publicSalePrice.mul(5)
       await launchpeg.connect(alice).publicSaleMint(5, { value: total })

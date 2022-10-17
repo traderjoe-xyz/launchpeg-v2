@@ -23,6 +23,7 @@ describe('LaunchpegFactory', () => {
   let bob: SignerWithAddress
   let projectOwner: SignerWithAddress
   let royaltyReceiver: SignerWithAddress
+  let joeFeeCollector: SignerWithAddress
 
   let LAUNCHPEG_PAUSER_ROLE: Bytes
 
@@ -38,6 +39,7 @@ describe('LaunchpegFactory', () => {
     bob = signers[2]
     projectOwner = signers[3]
     royaltyReceiver = signers[4]
+    joeFeeCollector = signers[5]
 
     await network.provider.request({
       method: 'hardhat_reset',
@@ -65,17 +67,24 @@ describe('LaunchpegFactory', () => {
     launchpeg = await launchpegCF.deploy()
 
     await launchpeg.initialize(
-      'JoePEG',
-      'JOEPEG',
-      ethers.constants.AddressZero,
-      dev.address,
-      projectOwner.address,
-      royaltyReceiver.address,
-      config.maxBatchSize,
-      config.collectionSize,
-      config.amountForAuction,
-      config.amountForAllowlist,
-      config.amountForDevs
+      [
+        'JoePEG',
+        'JOEPEG',
+        batchReveal.address,
+        config.maxBatchSize,
+        config.collectionSize,
+        config.amountForDevs,
+        config.amountForAuction,
+        config.amountForAllowlist,
+      ],
+      [
+        ethers.constants.AddressZero,
+        dev.address,
+        projectOwner.address,
+        royaltyReceiver.address,
+        joeFeeCollector.address,
+        config.joeFeePercent,
+      ]
     )
   }
 
@@ -83,16 +92,24 @@ describe('LaunchpegFactory', () => {
     flatLaunchpeg = await flatLaunchpegCF.deploy()
 
     await flatLaunchpeg.initialize(
-      'JoePEG',
-      'JOEPEG',
-      ethers.constants.AddressZero,
-      dev.address,
-      projectOwner.address,
-      royaltyReceiver.address,
-      config.maxBatchSize,
-      config.collectionSize,
-      config.amountForDevs,
-      config.amountForAllowlist
+      [
+        'JoePEG',
+        'JOEPEG',
+        batchReveal.address,
+        config.maxBatchSize,
+        config.collectionSize,
+        config.amountForDevs,
+        0,
+        config.amountForAllowlist,
+      ],
+      [
+        ethers.constants.AddressZero,
+        dev.address,
+        projectOwner.address,
+        royaltyReceiver.address,
+        joeFeeCollector.address,
+        config.joeFeePercent,
+      ]
     )
   }
 
@@ -101,7 +118,7 @@ describe('LaunchpegFactory', () => {
       launchpeg.address,
       flatLaunchpeg.address,
       batchReveal.address,
-      200,
+      config.joeFeePercent,
       royaltyReceiver.address,
     ])
     await launchpegFactory.deployed()

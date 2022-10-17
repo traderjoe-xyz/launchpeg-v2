@@ -13,7 +13,6 @@ error Launchpeg__BatchRevealStarted();
 error Launchpeg__CanNotMintThisMany();
 error Launchpeg__EndPriceGreaterThanStartPrice();
 error Launchpeg__HasBeenForceRevealed();
-error Launchpeg__JoeFeeAlreadyInitialized();
 error Launchpeg__InvalidAllowlistPrice();
 error Launchpeg__InvalidAuctionDropInterval();
 error Launchpeg__InvalidBatchReveal();
