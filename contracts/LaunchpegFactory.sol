@@ -56,8 +56,6 @@ contract LaunchpegFactory is
     event SetBatchReveal(address indexed batchReveal);
     event SetDefaultJoeFeePercent(uint256 joeFeePercent);
     event SetDefaultJoeFeeCollector(address indexed joeFeeCollector);
-    event AddLaunchpegPauser(address indexed pauser);
-    event RemoveLaunchpegPauser(address indexed pauser);
 
     bytes32 public constant override LAUNCHPEG_PAUSER_ROLE =
         keccak256("LAUNCHPEG_PAUSER_ROLE");
@@ -173,7 +171,6 @@ contract LaunchpegFactory is
                 });
             IBaseLaunchpeg.CollectionOwnerData memory ownerData = IBaseLaunchpeg
                 .CollectionOwnerData({
-                    factory: address(this),
                     owner: msg.sender,
                     projectOwner: _projectOwner,
                     royaltyReceiver: _royaltyReceiver,
@@ -239,7 +236,6 @@ contract LaunchpegFactory is
                 });
             IBaseLaunchpeg.CollectionOwnerData memory ownerData = IBaseLaunchpeg
                 .CollectionOwnerData({
-                    factory: address(this),
                     owner: msg.sender,
                     projectOwner: _projectOwner,
                     royaltyReceiver: _royaltyReceiver,
@@ -336,9 +332,8 @@ contract LaunchpegFactory is
     /// @notice Grants LAUNCHPEG_PAUSER_ROLE to an address. The
     /// address will be able to pause any Launchpeg collection
     /// @param _pauser Pauser address
-    function addLaunchpegPauser(address _pauser) external override onlyOwner {
+    function addLaunchpegPauser(address _pauser) external override {
         grantRole(LAUNCHPEG_PAUSER_ROLE, _pauser);
-        emit AddLaunchpegPauser(_pauser);
     }
 
     /// @notice Revokes LAUNCHPEG_PAUSER_ROLE from an address. The
@@ -347,10 +342,8 @@ contract LaunchpegFactory is
     function removeLaunchpegPauser(address _pauser)
         external
         override
-        onlyOwner
     {
         revokeRole(LAUNCHPEG_PAUSER_ROLE, _pauser);
-        emit RemoveLaunchpegPauser(_pauser);
     }
 
     /// @notice Pause specified Launchpeg

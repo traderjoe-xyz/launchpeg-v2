@@ -63,14 +63,7 @@ describe('Launchpeg', () => {
         config.amountForAuction,
         config.amountForAllowlist,
       ],
-      [
-        ethers.constants.AddressZero,
-        dev.address,
-        projectOwner.address,
-        royaltyReceiver.address,
-        joeFeeCollector.address,
-        config.joeFeePercent,
-      ]
+      [dev.address, projectOwner.address, royaltyReceiver.address, joeFeeCollector.address, config.joeFeePercent]
     )
     await batchReveal.configure(
       launchpeg.address,
@@ -102,14 +95,7 @@ describe('Launchpeg', () => {
             config.amountForAuction,
             config.amountForAllowlist,
           ],
-          [
-            ethers.constants.AddressZero,
-            dev.address,
-            projectOwner.address,
-            royaltyReceiver.address,
-            joeFeeCollector.address,
-            config.joeFeePercent,
-          ]
+          [dev.address, projectOwner.address, royaltyReceiver.address, joeFeeCollector.address, config.joeFeePercent]
         )
       ).to.be.revertedWith('Initializable: contract is already initialized')
     })

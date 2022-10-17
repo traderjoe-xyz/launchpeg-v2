@@ -254,9 +254,7 @@ abstract contract BaseLaunchpeg is
         amountForDevs = _collectionData.amountForDevs;
         amountForAllowlist = _collectionData.amountForAllowlist;
 
-        if (_ownerData.factory != address(0)) {
-            grantRole(PAUSER_ROLE, _ownerData.factory);
-        }
+        grantRole(PAUSER_ROLE, msg.sender);
         grantRole(PROJECT_OWNER_ROLE, _ownerData.projectOwner);
         _transferOwnership(_ownerData.owner);
     }

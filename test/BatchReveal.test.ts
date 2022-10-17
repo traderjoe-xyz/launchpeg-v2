@@ -66,14 +66,7 @@ describe('BatchReveal', () => {
         config.amountForAuction,
         config.amountForAllowlist,
       ],
-      [
-        ethers.constants.AddressZero,
-        dev.address,
-        projectOwner.address,
-        royaltyReceiver.address,
-        joeFeeCollector.address,
-        config.joeFeePercent,
-      ]
+      [dev.address, projectOwner.address, royaltyReceiver.address, joeFeeCollector.address, config.joeFeePercent]
     )
     if (enableBatchReveal) {
       await batchReveal.configure(
