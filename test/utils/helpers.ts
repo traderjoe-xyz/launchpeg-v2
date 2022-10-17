@@ -3,6 +3,7 @@ import { BigNumber, Contract } from 'ethers'
 import { duration, advanceTimeAndBlock, latest } from './time'
 
 export interface LaunchpegConfig {
+  joeFeePercent: BigNumber
   auctionStartTime: BigNumber
   preMintStartTime: BigNumber
   allowlistStartTime: BigNumber
@@ -41,6 +42,7 @@ export const getDefaultLaunchpegConfig = async (): Promise<LaunchpegConfig> => {
   const blockTimestamp = await latest()
   const auctionStartTime = blockTimestamp.add(duration.minutes(AUCTION_START_OFFSET))
   return {
+    joeFeePercent: BigNumber.from(200),
     auctionStartTime,
     preMintStartTime: auctionStartTime.add(duration.minutes(PREMINT_START_OFFSET)),
     allowlistStartTime: auctionStartTime.add(duration.minutes(ALLOWLIST_START_OFFSET)),

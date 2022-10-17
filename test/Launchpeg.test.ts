@@ -19,6 +19,7 @@ describe('Launchpeg', () => {
   let bob: SignerWithAddress
   let projectOwner: SignerWithAddress
   let royaltyReceiver: SignerWithAddress
+  let joeFeeCollector: SignerWithAddress
 
   before(async () => {
     launchpegCF = await ethers.getContractFactory('Launchpeg')
@@ -30,6 +31,7 @@ describe('Launchpeg', () => {
     bob = signers[2]
     projectOwner = signers[3]
     royaltyReceiver = signers[4]
+    joeFeeCollector = signers[5]
 
     await network.provider.request({
       method: 'hardhat_reset',
@@ -51,17 +53,24 @@ describe('Launchpeg', () => {
   const deployLaunchpeg = async () => {
     launchpeg = await launchpegCF.deploy()
     await launchpeg.initialize(
-      'JoePEG',
-      'JOEPEG',
-      ethers.constants.AddressZero,
-      dev.address,
-      projectOwner.address,
-      royaltyReceiver.address,
-      config.maxBatchSize,
-      config.collectionSize,
-      config.amountForAuction,
-      config.amountForAllowlist,
-      config.amountForDevs
+      [
+        'JoePEG',
+        'JOEPEG',
+        batchReveal.address,
+        config.maxBatchSize,
+        config.collectionSize,
+        config.amountForDevs,
+        config.amountForAuction,
+        config.amountForAllowlist,
+      ],
+      [
+        ethers.constants.AddressZero,
+        dev.address,
+        projectOwner.address,
+        royaltyReceiver.address,
+        joeFeeCollector.address,
+        config.joeFeePercent,
+      ]
     )
     await batchReveal.configure(
       launchpeg.address,
@@ -69,7 +78,6 @@ describe('Launchpeg', () => {
       config.batchRevealStart,
       config.batchRevealInterval
     )
-    await launchpeg.setBatchReveal(batchReveal.address)
   }
 
   beforeEach(async () => {
@@ -84,17 +92,24 @@ describe('Launchpeg', () => {
 
       await expect(
         launchpeg.initialize(
-          'JoePEG',
-          'JOEPEG',
-          ethers.constants.AddressZero,
-          dev.address,
-          projectOwner.address,
-          royaltyReceiver.address,
-          config.maxBatchSize,
-          config.collectionSize,
-          config.amountForAuction,
-          config.amountForAllowlist,
-          config.amountForDevs
+          [
+            'JoePEG',
+            'JOEPEG',
+            batchReveal.address,
+            config.maxBatchSize,
+            config.collectionSize,
+            config.amountForDevs,
+            config.amountForAuction,
+            config.amountForAllowlist,
+          ],
+          [
+            ethers.constants.AddressZero,
+            dev.address,
+            projectOwner.address,
+            royaltyReceiver.address,
+            joeFeeCollector.address,
+            config.joeFeePercent,
+          ]
         )
       ).to.be.revertedWith('Initializable: contract is already initialized')
     })
