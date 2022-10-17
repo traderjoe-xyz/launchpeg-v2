@@ -123,7 +123,9 @@ interface IBaseLaunchpeg is IERC721Upgradeable, IERC721MetadataUpgradeable {
 
     function preMint(uint256 _quantity) external payable;
 
-    function batchMintPreMintedNFTs(uint256 _maxQuantity) external;
+    function claimPreMint() external;
+
+    function batchClaimPreMint(uint256 _maxQuantity) external;
 
     function allowlistMint(uint256 _quantity) external payable;
 
@@ -136,10 +138,7 @@ interface IBaseLaunchpeg is IERC721Upgradeable, IERC721MetadataUpgradeable {
         view
         returns (ERC721AUpgradeable.TokenOwnership memory);
 
-    function userAddressToPreMintAmount(address owner)
-        external
-        view
-        returns (uint256);
+    function userPendingPreMints(address owner) external view returns (uint256);
 
     function numberMinted(address owner) external view returns (uint256);
 

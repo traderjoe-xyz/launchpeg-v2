@@ -3,6 +3,7 @@ pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/common/ERC2981Upgradeable.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
 
 import "erc721a-upgradeable/contracts/ERC721AUpgradeable.sol";
@@ -23,6 +24,8 @@ abstract contract BaseLaunchpeg is
     ERC2981Upgradeable
 {
     using StringsUpgradeable for uint256;
+
+    using EnumerableSet for EnumerableSet.AddressSet;
 
     /// @notice Role granted to project owners
     bytes32 public constant override PROJECT_OWNER_ROLE =
@@ -65,7 +68,7 @@ abstract contract BaseLaunchpeg is
     mapping(address => uint256) public override allowlist;
 
     // @notice The remaining no. of pre-minted NFTs for the user address
-    mapping(address => uint256) public override userAddressToPreMintAmount;
+    mapping(address => uint256) public override userPendingPreMints;
 
     /// @notice Tracks the amount of NFTs minted by `projectOwner`
     uint256 public override amountMintedByDevs;
@@ -99,16 +102,8 @@ abstract contract BaseLaunchpeg is
     /// @notice Start time when funds can be withdrawn
     uint256 public override withdrawAVAXStartTime;
 
-    /// @dev Queue of pre-mint requests by allowlist users
-    PreMintData[] private preMintQueue;
-
-    /// @dev Next index of the `preMintQueue` to be processed by batch mint
-    uint256 private preMintQueueIdx;
-
-    struct PreMintData {
-        address sender;
-        uint256 quantity;
-    }
+    /// @dev List of users with open pre-mint requests
+    EnumerableSet.AddressSet private _preMintUsers;
 
     /// @dev Emitted on initializeJoeFee()
     /// @param feePercent The fees collected by Joepegs on the sale benefits
@@ -126,7 +121,7 @@ abstract contract BaseLaunchpeg is
     /// @param price Price of 1 NFT
     event PreMint(address indexed sender, uint256 quantity, uint256 price);
 
-    /// @dev Emitted on auctionMint(), batchMintPreMintedNFTs(),
+    /// @dev Emitted on auctionMint(), claimPreMint(), batchClaimPreMint(),
     /// allowlistMint(), publicSaleMint()
     /// @param sender The address that minted
     /// @param quantity Amount of NFTs minted
@@ -478,45 +473,65 @@ abstract contract BaseLaunchpeg is
             revert Launchpeg__MaxSupplyReached();
         }
         allowlist[msg.sender] -= _quantity;
-        userAddressToPreMintAmount[msg.sender] += _quantity;
+        userPendingPreMints[msg.sender] += _quantity;
         amountMintedDuringPreMint += _quantity;
-        preMintQueue.push(
-            PreMintData({sender: msg.sender, quantity: _quantity})
-        );
+        _preMintUsers.add(msg.sender);
         uint256 price = _getPreMintPrice();
         uint256 totalCost = price * _quantity;
         emit PreMint(msg.sender, _quantity, price);
         _refundIfOver(totalCost);
     }
 
-    /// @dev Should only be called in the allowlist and public sale phases.
+    /// @notice Claim pre-minted NFTs
+    /// @dev Should only be called after pre-mint phase and before public sale ends
+    function _claimPreMint() internal {
+        uint256 quantity = userPendingPreMints[msg.sender];
+        if (quantity == 0) {
+            revert Launchpeg__InvalidClaim();
+        }
+        userPendingPreMints[msg.sender] = 0;
+        _preMintUsers.remove(msg.sender);
+        amountBatchMinted += quantity;
+        uint256 price = _getAllowlistPrice();
+        // Skip check that quantity <= maxPerAddressDuringMint
+        // since mint methods should enforce this
+        _mint(msg.sender, quantity, "", false);
+        emit Mint(
+            msg.sender,
+            quantity,
+            price,
+            _totalMinted() - quantity,
+            Phase.PreMint
+        );
+    }
+
+    /// @notice Claim pre-minted NFTs for users
+    /// @dev Should only be called by owner
     /// @param _maxQuantity Max quantity of NFTs to mint
-    function _batchMintPreMintedNFTs(uint256 _maxQuantity) internal {
+    function batchClaimPreMint(uint256 _maxQuantity)
+        external
+        override
+        onlyOwner
+    {
         if (_maxQuantity == 0) {
             revert Launchpeg__InvalidQuantity();
         }
         if (amountMintedDuringPreMint == amountBatchMinted) {
-            revert Launchpeg__MaxSupplyForBatchMintReached();
+            revert Launchpeg__InvalidClaim();
         }
         uint256 remQuantity = _maxQuantity;
         uint256 price = _getPreMintPrice();
         address sender;
         uint256 quantity;
-        uint256 i = preMintQueueIdx;
-        uint256 length = preMintQueue.length;
-        while (i < length && remQuantity > 0) {
-            PreMintData memory data = preMintQueue[i];
-            sender = data.sender;
-            if (data.quantity > remQuantity) {
-                quantity = remQuantity;
-                preMintQueue[i].quantity -= quantity;
-            } else {
-                quantity = data.quantity;
-                delete preMintQueue[i];
-                i++;
-            }
+        uint256 len = _preMintUsers.length();
+        for (uint256 i; i < len && remQuantity > 0; ++i) {
+            sender = _preMintUsers.at(i);
+            quantity = userPendingPreMints[sender];
+            quantity = (quantity > remQuantity) ? remQuantity : quantity;
             remQuantity -= quantity;
-            userAddressToPreMintAmount[sender] -= quantity;
+            userPendingPreMints[sender] -= quantity;
+            // Skip check that quantity <= maxPerAddressDuringMint
+            // since mint methods should enforce this
             _mint(sender, quantity, "", false);
             emit Mint(
                 sender,
@@ -527,7 +542,6 @@ abstract contract BaseLaunchpeg is
             );
         }
         amountBatchMinted += (_maxQuantity - remQuantity);
-        preMintQueueIdx = i;
     }
 
     /// @notice Mint NFTs during the allowlist mint
@@ -790,6 +804,6 @@ abstract contract BaseLaunchpeg is
         override
         returns (uint256)
     {
-        return _numberMinted(_owner) + userAddressToPreMintAmount[_owner];
+        return _numberMinted(_owner) + userPendingPreMints[_owner];
     }
 }

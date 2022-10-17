@@ -32,8 +32,8 @@ contract FlatLaunchpeg is BaseLaunchpeg, IFlatLaunchpeg {
         uint256 salePrice
     );
 
-    /// @dev Batch mint is allowed in the allowlist and public sale phases
-    modifier isBatchMintAvailable() {
+    /// @dev Pre-mints can be claimed in the allowlist and public sale phases
+    modifier isClaimPreMintAvailable() {
         Phase currPhase = currentPhase();
         if (currPhase != Phase.Allowlist && currPhase != Phase.PublicSale) {
             revert Launchpeg__WrongPhase();
@@ -132,15 +132,14 @@ contract FlatLaunchpeg is BaseLaunchpeg, IFlatLaunchpeg {
         _preMint(_quantity);
     }
 
-    /// @notice Batch mint NFTs requested during the pre-mint
-    /// @param _maxQuantity Max quantity of NFTs to mint
-    function batchMintPreMintedNFTs(uint256 _maxQuantity)
+    /// @notice Claim pre-minted NFTs
+    function claimPreMint()
         external
         override
         whenNotPaused
-        isBatchMintAvailable
+        isClaimPreMintAvailable
     {
-        _batchMintPreMintedNFTs(_maxQuantity);
+        _claimPreMint();
     }
 
     /// @notice Returns the current phase
