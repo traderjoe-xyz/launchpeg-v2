@@ -98,44 +98,22 @@ contract Launchpeg is BaseLaunchpeg, ILaunchpeg {
 
     /// @notice Launchpeg initialization
     /// Can only be called once
-    /// @param _name ERC721 name
-    /// @param _symbol ERC721 symbol
-    /// @param _projectOwner The project owner
-    /// @param _royaltyReceiver Royalty fee collector
-    /// @param _maxBatchSize Max amount of NFTs that can be minted at once
-    /// @param _collectionSize The collection size (e.g 10000)
-    /// @param _amountForAuction Amount of NFTs available for the auction (e.g 8000)
-    /// @param _amountForAllowlist Amount of NFTs available for the allowlist mint (e.g 1000)
-    /// @param _amountForDevs Amount of NFTs reserved for `projectOwner` (e.g 200)
+    /// @param _collectionData Launchpeg collection data
+    /// @param _ownerData Launchpeg owner data
     function initialize(
-        string memory _name,
-        string memory _symbol,
-        address _projectOwner,
-        address _royaltyReceiver,
-        uint256 _maxBatchSize,
-        uint256 _collectionSize,
-        uint256 _amountForAuction,
-        uint256 _amountForAllowlist,
-        uint256 _amountForDevs
+        CollectionData calldata _collectionData,
+        CollectionOwnerData calldata _ownerData
     ) external override initializer {
-        initializeBaseLaunchpeg(
-            _name,
-            _symbol,
-            _projectOwner,
-            _royaltyReceiver,
-            _maxBatchSize,
-            _collectionSize,
-            _amountForDevs,
-            _amountForAllowlist
-        );
+        initializeBaseLaunchpeg(_collectionData, _ownerData);
         if (
-            _amountForAuction + _amountForAllowlist + _amountForDevs >
-            _collectionSize
+            _collectionData.amountForAuction +
+                _collectionData.amountForAllowlist +
+                _collectionData.amountForDevs >
+            _collectionData.collectionSize
         ) {
             revert Launchpeg__LargerCollectionSizeNeeded();
         }
-
-        amountForAuction = _amountForAuction;
+        amountForAuction = _collectionData.amountForAuction;
     }
 
     /// @notice Initialize the three phases of the sale

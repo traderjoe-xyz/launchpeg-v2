@@ -5,6 +5,8 @@ pragma solidity ^0.8.4;
 /// @author Trader Joe
 /// @notice Defines the basic interface of LaunchpegFactory
 interface ILaunchpegFactory {
+    function LAUNCHPEG_PAUSER_ROLE() external pure returns (bytes32);
+
     function launchpegImplementation() external view returns (address);
 
     function flatLaunchpegImplementation() external view returns (address);
@@ -14,8 +16,6 @@ interface ILaunchpegFactory {
     function joeFeePercent() external view returns (uint256);
 
     function joeFeeCollector() external view returns (address);
-
-    function defaultPausers() external view returns (address[] memory);
 
     function isLaunchpeg(uint256 _type, address _contract)
         external
@@ -68,7 +68,9 @@ interface ILaunchpegFactory {
 
     function setDefaultJoeFeeCollector(address _joeFeeCollector) external;
 
-    function addDefaultPauser(address _pauser) external returns (bool);
+    function addLaunchpegPauser(address _pauser) external;
 
-    function removeDefaultPauser(address _pauser) external returns (bool);
+    function removeLaunchpegPauser(address _pauser) external;
+
+    function pauseLaunchpeg(address _launchpeg) external;
 }

@@ -21,6 +21,7 @@ describe('BatchReveal', () => {
   let bob: SignerWithAddress
   let projectOwner: SignerWithAddress
   let royaltyReceiver: SignerWithAddress
+  let joeFeeCollector: SignerWithAddress
 
   before(async () => {
     launchpegCF = await ethers.getContractFactory('Launchpeg')
@@ -33,6 +34,7 @@ describe('BatchReveal', () => {
     bob = signers[2]
     projectOwner = signers[3]
     royaltyReceiver = signers[4]
+    joeFeeCollector = signers[5]
 
     await network.provider.request({
       method: 'hardhat_reset',
@@ -54,15 +56,17 @@ describe('BatchReveal', () => {
   const deployLaunchpeg = async (enableBatchReveal: boolean = true) => {
     launchpeg = await launchpegCF.deploy()
     await launchpeg.initialize(
-      'JoePEG',
-      'JOEPEG',
-      projectOwner.address,
-      royaltyReceiver.address,
-      config.maxBatchSize,
-      config.collectionSize,
-      config.amountForAuction,
-      config.amountForAllowlist,
-      config.amountForDevs
+      [
+        'JoePEG',
+        'JOEPEG',
+        enableBatchReveal ? batchReveal.address : ethers.constants.AddressZero,
+        config.maxBatchSize,
+        config.collectionSize,
+        config.amountForDevs,
+        config.amountForAuction,
+        config.amountForAllowlist,
+      ],
+      [dev.address, projectOwner.address, royaltyReceiver.address, joeFeeCollector.address, config.joeFeePercent]
     )
     if (enableBatchReveal) {
       await batchReveal.configure(
@@ -71,7 +75,6 @@ describe('BatchReveal', () => {
         config.batchRevealStart,
         config.batchRevealInterval
       )
-      await launchpeg.setBatchReveal(batchReveal.address)
     }
   }
 

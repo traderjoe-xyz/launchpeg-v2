@@ -8,14 +8,8 @@ import "./IBaseLaunchpeg.sol";
 /// @notice Defines the basic interface of FlatLaunchpeg
 interface IFlatLaunchpeg is IBaseLaunchpeg {
     function initialize(
-        string memory _name,
-        string memory _symbol,
-        address _projectOwner,
-        address _royaltyReceiver,
-        uint256 _maxBatchSize,
-        uint256 _collectionSize,
-        uint256 _amountForDevs,
-        uint256 _amountForAllowlist
+        CollectionData calldata _collectionData,
+        CollectionOwnerData calldata _ownerData
     ) external;
 
     function initializePhases(

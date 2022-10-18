@@ -19,7 +19,40 @@ interface IBaseLaunchpeg is IERC721Upgradeable, IERC721MetadataUpgradeable {
         Ended
     }
 
-    function PROJECT_OWNER_ROLE() external view returns (bytes32);
+    /// @notice Collection data to initialize Launchpeg
+    /// @param name ERC721 name
+    /// @param symbol ERC721 symbol
+    /// @param maxBatchSize Max amount of NFTs that can be minted at once
+    /// @param collectionSize The collection size (e.g 10000)
+    /// @param amountForDevs Amount of NFTs reserved for `projectOwner` (e.g 200)
+    /// @param amountForAuction Amount of NFTs available for the auction (e.g 8000)
+    /// @param amountForAllowlist Amount of NFTs available for the allowlist mint (e.g 1000)
+    struct CollectionData {
+        string name;
+        string symbol;
+        address batchReveal;
+        uint256 maxBatchSize;
+        uint256 collectionSize;
+        uint256 amountForDevs;
+        uint256 amountForAuction;
+        uint256 amountForAllowlist;
+    }
+
+    /// @notice Collection owner data to initialize Launchpeg
+    /// @param owner The contract owner
+    /// @param projectOwner The project owner
+    /// @param royaltyReceiver Royalty fee collector
+    /// @param joeFeeCollector The address to which the fees on the sale will be sent
+    /// @param joeFeePercent The fees collected by the fee collector on the sale benefits
+    struct CollectionOwnerData {
+        address owner;
+        address projectOwner;
+        address royaltyReceiver;
+        address joeFeeCollector;
+        uint256 joeFeePercent;
+    }
+
+    function PROJECT_OWNER_ROLE() external pure returns (bytes32);
 
     function collectionSize() external view returns (uint256);
 
@@ -64,9 +97,6 @@ interface IBaseLaunchpeg is IERC721Upgradeable, IERC721MetadataUpgradeable {
     function allowlistPrice() external view returns (uint256);
 
     function salePrice() external view returns (uint256);
-
-    function initializeJoeFee(uint256 _joeFeePercent, address _joeFeeCollector)
-        external;
 
     function setRoyaltyInfo(address receiver, uint96 feePercent) external;
 

@@ -24,11 +24,12 @@ abstract contract BaseLaunchpeg is
 {
     using StringsUpgradeable for uint256;
 
-    IBatchReveal public batchReveal;
-
     /// @notice Role granted to project owners
     bytes32 public constant override PROJECT_OWNER_ROLE =
         keccak256("PROJECT_OWNER_ROLE");
+
+    /// @notice Percentage base point
+    uint256 public constant BASIS_POINT_PRECISION = 10_000;
 
     /// @notice The collection size (e.g 10000)
     uint256 public override collectionSize;
@@ -53,8 +54,8 @@ abstract contract BaseLaunchpeg is
     /// @notice The address to which the fees on the sale will be sent
     address public override joeFeeCollector;
 
-    /// @notice Percentage base point
-    uint256 public constant BASIS_POINT_PRECISION = 10_000;
+    /// @notice Batch reveal contract
+    IBatchReveal public batchReveal;
 
     /// @notice Token URI after collection reveal
     string public override baseURI;
@@ -194,66 +195,56 @@ abstract contract BaseLaunchpeg is
     }
 
     /// @dev BaseLaunchpeg initialization
-    /// @param _name ERC721 name
-    /// @param _symbol ERC721 symbol
-    /// @param _projectOwner The project owner
-    /// @param _royaltyReceiver Royalty fee collector
-    /// @param _maxBatchSize Max amount of NFTs that can be minted at once
-    /// @param _collectionSize The collection size (e.g 10000)
-    /// @param _amountForDevs Amount of NFTs reserved for `projectOwner` (e.g 200)
-    /// @param _amountForAllowlist Amount of NFTs available for the allowlist mint (e.g 1000)
+    /// @param _collectionData Launchpeg collection data
+    /// @param _ownerData Launchpeg owner data
     function initializeBaseLaunchpeg(
-        string memory _name,
-        string memory _symbol,
-        address _projectOwner,
-        address _royaltyReceiver,
-        uint256 _maxBatchSize,
-        uint256 _collectionSize,
-        uint256 _amountForDevs,
-        uint256 _amountForAllowlist
+        CollectionData calldata _collectionData,
+        CollectionOwnerData calldata _ownerData
     ) internal onlyInitializing {
         __SafePausable_init();
         __ReentrancyGuard_init();
         __ERC2981_init();
-        __ERC721A_init(_name, _symbol);
+        __ERC721A_init(_collectionData.name, _collectionData.symbol);
 
-        if (_projectOwner == address(0)) {
+        if (_ownerData.owner == address(0)) {
+            revert Launchpeg__InvalidOwner();
+        }
+        if (_ownerData.projectOwner == address(0)) {
             revert Launchpeg__InvalidProjectOwner();
         }
-
         if (
-            _collectionSize == 0 ||
-            _amountForDevs + _amountForAllowlist > _collectionSize
+            _collectionData.collectionSize == 0 ||
+            _collectionData.amountForDevs + _collectionData.amountForAllowlist >
+            _collectionData.collectionSize
         ) {
             revert Launchpeg__LargerCollectionSizeNeeded();
         }
-
-        if (_maxBatchSize > _collectionSize) {
+        if (_collectionData.maxBatchSize > _collectionData.collectionSize) {
             revert Launchpeg__InvalidMaxBatchSize();
         }
 
-        grantRole(PROJECT_OWNER_ROLE, _projectOwner);
         // Default royalty is 5%
-        _setDefaultRoyalty(_royaltyReceiver, 500);
+        _setDefaultRoyalty(_ownerData.royaltyReceiver, 500);
+        _initializeJoeFee(_ownerData.joeFeePercent, _ownerData.joeFeeCollector);
 
-        maxBatchSize = _maxBatchSize;
-        collectionSize = _collectionSize;
-        maxPerAddressDuringMint = _maxBatchSize;
-        amountForDevs = _amountForDevs;
-        amountForAllowlist = _amountForAllowlist;
+        batchReveal = IBatchReveal(_collectionData.batchReveal);
+        maxBatchSize = _collectionData.maxBatchSize;
+        collectionSize = _collectionData.collectionSize;
+        maxPerAddressDuringMint = _collectionData.maxBatchSize;
+        amountForDevs = _collectionData.amountForDevs;
+        amountForAllowlist = _collectionData.amountForAllowlist;
+
+        grantRole(PAUSER_ROLE, msg.sender);
+        grantRole(PROJECT_OWNER_ROLE, _ownerData.projectOwner);
+        _transferOwnership(_ownerData.owner);
     }
 
     /// @notice Initialize the sales fee percent taken by Joepegs and address that collects the fees
     /// @param _joeFeePercent The fees collected by Joepegs on the sale benefits
     /// @param _joeFeeCollector The address to which the fees on the sale will be sent
-    function initializeJoeFee(uint256 _joeFeePercent, address _joeFeeCollector)
-        external
-        override
-        onlyOwner
+    function _initializeJoeFee(uint256 _joeFeePercent, address _joeFeeCollector)
+        internal
     {
-        if (joeFeeCollector != address(0)) {
-            revert Launchpeg__JoeFeeAlreadyInitialized();
-        }
         if (_joeFeePercent > BASIS_POINT_PRECISION) {
             revert Launchpeg__InvalidPercent();
         }

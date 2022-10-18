@@ -19,6 +19,7 @@ describe('FlatLaunchpeg', () => {
   let bob: SignerWithAddress
   let projectOwner: SignerWithAddress
   let royaltyReceiver: SignerWithAddress
+  let joeFeeCollector: SignerWithAddress
 
   before(async () => {
     flatLaunchpegCF = await ethers.getContractFactory('FlatLaunchpeg')
@@ -30,6 +31,7 @@ describe('FlatLaunchpeg', () => {
     bob = signers[2]
     projectOwner = signers[3]
     royaltyReceiver = signers[4]
+    joeFeeCollector = signers[5]
 
     await network.provider.request({
       method: 'hardhat_reset',
@@ -51,16 +53,18 @@ describe('FlatLaunchpeg', () => {
   const deployFlatLaunchpeg = async () => {
     flatLaunchpeg = await flatLaunchpegCF.deploy()
     await flatLaunchpeg.initialize(
-      'JoePEG',
-      'JOEPEG',
-      projectOwner.address,
-      royaltyReceiver.address,
-      config.maxBatchSize,
-      config.collectionSize,
-      config.amountForDevs,
-      config.amountForAllowlist
+      [
+        'JoePEG',
+        'JOEPEG',
+        batchReveal.address,
+        config.maxBatchSize,
+        config.collectionSize,
+        config.amountForDevs,
+        0,
+        config.amountForAllowlist,
+      ],
+      [dev.address, projectOwner.address, royaltyReceiver.address, joeFeeCollector.address, config.joeFeePercent]
     )
-    await flatLaunchpeg.setBatchReveal(batchReveal.address)
     await batchReveal.configure(
       flatLaunchpeg.address,
       config.batchRevealSize,
@@ -79,14 +83,17 @@ describe('FlatLaunchpeg', () => {
     it('Should allow owner to initialize only once', async () => {
       await expect(
         flatLaunchpeg.initialize(
-          'JoePEG',
-          'JOEPEG',
-          projectOwner.address,
-          royaltyReceiver.address,
-          config.maxBatchSize,
-          config.collectionSize,
-          config.amountForDevs,
-          config.amountForAllowlist
+          [
+            'JoePEG',
+            'JOEPEG',
+            batchReveal.address,
+            config.maxBatchSize,
+            config.collectionSize,
+            config.amountForDevs,
+            0,
+            config.amountForAllowlist,
+          ],
+          [dev.address, projectOwner.address, royaltyReceiver.address, joeFeeCollector.address, config.joeFeePercent]
         )
       ).to.be.revertedWith('Initializable: contract is already initialized')
     })
