@@ -196,6 +196,26 @@ abstract contract BaseLaunchpeg is
         _;
     }
 
+    /// @notice Phase time can be updated if it has been initialized and
+    // the time has not passed
+    modifier isTimeUpdateAllowed(uint256 _phaseTime) {
+        if (_phaseTime == 0) {
+            revert Launchpeg__NotInitialized();
+        }
+        if (_phaseTime <= block.timestamp) {
+            revert Launchpeg__WrongPhase();
+        }
+        _;
+    }
+
+    /// @notice Checks if new time is equal to or after block timestamp
+    modifier isNotBeforeBlockTimestamp(uint256 _newTime) {
+        if (_newTime < block.timestamp) {
+            revert Launchpeg__InvalidStartTime();
+        }
+        _;
+    }
+
     /// @dev BaseLaunchpeg initialization
     /// @param _name ERC721 name
     /// @param _symbol ERC721 symbol
@@ -342,11 +362,9 @@ abstract contract BaseLaunchpeg is
         external
         override
         onlyOwner
+        isTimeUpdateAllowed(allowlistStartTime)
+        isNotBeforeBlockTimestamp(_allowlistStartTime)
     {
-        _checkInitialized(allowlistStartTime);
-        _checkBeforePhaseStart(allowlistStartTime);
-        _checkNotBeforeBlockTimestamp(_allowlistStartTime);
-
         if (_allowlistStartTime < preMintStartTime) {
             revert Launchpeg__AllowlistBeforePreMint();
         }
@@ -365,11 +383,9 @@ abstract contract BaseLaunchpeg is
         external
         override
         onlyOwner
+        isTimeUpdateAllowed(publicSaleStartTime)
+        isNotBeforeBlockTimestamp(_publicSaleStartTime)
     {
-        _checkInitialized(publicSaleStartTime);
-        _checkBeforePhaseStart(publicSaleStartTime);
-        _checkNotBeforeBlockTimestamp(_publicSaleStartTime);
-
         if (_publicSaleStartTime < allowlistStartTime) {
             revert Launchpeg__PublicSaleBeforeAllowlist();
         }
@@ -388,12 +404,9 @@ abstract contract BaseLaunchpeg is
         external
         override
         onlyOwner
+        isTimeUpdateAllowed(publicSaleEndTime)
+        isNotBeforeBlockTimestamp(_publicSaleEndTime)
     {
-        _checkInitialized(publicSaleEndTime);
-        // check before start of public sale phase
-        _checkBeforePhaseStart(publicSaleStartTime);
-        _checkNotBeforeBlockTimestamp(_publicSaleEndTime);
-
         if (_publicSaleEndTime < publicSaleStartTime) {
             revert Launchpeg__PublicSaleEndBeforePublicSaleStart();
         }
@@ -407,8 +420,8 @@ abstract contract BaseLaunchpeg is
         external
         override
         onlyOwner
+        isNotBeforeBlockTimestamp(_withdrawAVAXStartTime)
     {
-        _checkNotBeforeBlockTimestamp(_withdrawAVAXStartTime);
         withdrawAVAXStartTime = _withdrawAVAXStartTime;
         emit WithdrawAVAXStartTimeSet(_withdrawAVAXStartTime);
     }
@@ -685,26 +698,5 @@ abstract contract BaseLaunchpeg is
         returns (uint256)
     {
         return _numberMinted(_owner) + userAddressToPreMintAmount[_owner];
-    }
-
-    /// @dev Checks if phase time has been initialized
-    function _checkInitialized(uint256 _phaseTime) internal pure {
-        if (_phaseTime == 0) {
-            revert Launchpeg__NotInitialized();
-        }
-    }
-
-    /// @dev Checks if block timestamp is before phase start
-    function _checkBeforePhaseStart(uint256 _phaseStartTime) internal view {
-        if (_phaseStartTime <= block.timestamp) {
-            revert Launchpeg__WrongPhase();
-        }
-    }
-
-    /// @dev Checks if new time is equal to or after block timestamp
-    function _checkNotBeforeBlockTimestamp(uint256 _newTime) internal view {
-        if (_newTime < block.timestamp) {
-            revert Launchpeg__InvalidStartTime();
-        }
     }
 }

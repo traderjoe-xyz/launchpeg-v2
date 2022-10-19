@@ -360,10 +360,10 @@ describe('Launchpeg', () => {
       )
     })
 
-    it('Should revert if public sale end time is set after public sale phase starts', async () => {
-      // Advance to public sale phase
+    it('Should revert if public sale end time is set after public sale phase ends', async () => {
+      // Advance to end of public sale phase
       const blockTimestamp = await latest()
-      await advanceTimeAndBlock(duration.seconds(config.publicSaleStartTime.sub(blockTimestamp).toNumber()))
+      await advanceTimeAndBlock(duration.seconds(config.publicSaleEndTime.sub(blockTimestamp).toNumber()))
 
       const newPublicSaleEndTime = config.publicSaleEndTime.add(duration.minutes(30))
       await expect(launchpeg.setPublicSaleEndTime(newPublicSaleEndTime)).to.be.revertedWith('Launchpeg__WrongPhase()')
