@@ -194,6 +194,26 @@ abstract contract BaseLaunchpeg is
         _;
     }
 
+    /// @notice Phase time can be updated if it has been initialized and
+    // the time has not passed
+    modifier isTimeUpdateAllowed(uint256 _phaseTime) {
+        if (_phaseTime == 0) {
+            revert Launchpeg__NotInitialized();
+        }
+        if (_phaseTime <= block.timestamp) {
+            revert Launchpeg__WrongPhase();
+        }
+        _;
+    }
+
+    /// @notice Checks if new time is equal to or after block timestamp
+    modifier isNotBeforeBlockTimestamp(uint256 _newTime) {
+        if (_newTime < block.timestamp) {
+            revert Launchpeg__InvalidStartTime();
+        }
+        _;
+    }
+
     /// @dev BaseLaunchpeg initialization
     /// @param _collectionData Launchpeg collection data
     /// @param _ownerData Launchpeg owner data
@@ -319,10 +339,9 @@ abstract contract BaseLaunchpeg is
         external
         override
         onlyOwner
+        isTimeUpdateAllowed(allowlistStartTime)
+        isNotBeforeBlockTimestamp(_allowlistStartTime)
     {
-        if (allowlistStartTime == 0) {
-            revert Launchpeg__NotInitialized();
-        }
         if (_allowlistStartTime < preMintStartTime) {
             revert Launchpeg__AllowlistBeforePreMint();
         }
@@ -341,10 +360,9 @@ abstract contract BaseLaunchpeg is
         external
         override
         onlyOwner
+        isTimeUpdateAllowed(publicSaleStartTime)
+        isNotBeforeBlockTimestamp(_publicSaleStartTime)
     {
-        if (publicSaleStartTime == 0) {
-            revert Launchpeg__NotInitialized();
-        }
         if (_publicSaleStartTime < allowlistStartTime) {
             revert Launchpeg__PublicSaleBeforeAllowlist();
         }
@@ -363,10 +381,9 @@ abstract contract BaseLaunchpeg is
         external
         override
         onlyOwner
+        isTimeUpdateAllowed(publicSaleEndTime)
+        isNotBeforeBlockTimestamp(_publicSaleEndTime)
     {
-        if (publicSaleEndTime == 0) {
-            revert Launchpeg__NotInitialized();
-        }
         if (_publicSaleEndTime < publicSaleStartTime) {
             revert Launchpeg__PublicSaleEndBeforePublicSaleStart();
         }
@@ -380,10 +397,8 @@ abstract contract BaseLaunchpeg is
         external
         override
         onlyOwner
+        isNotBeforeBlockTimestamp(_withdrawAVAXStartTime)
     {
-        if (_withdrawAVAXStartTime < block.timestamp) {
-            revert Launchpeg__InvalidStartTime();
-        }
         withdrawAVAXStartTime = _withdrawAVAXStartTime;
         emit WithdrawAVAXStartTimeSet(_withdrawAVAXStartTime);
     }
@@ -643,12 +658,12 @@ abstract contract BaseLaunchpeg is
         return batchReveal.hasBatchToReveal(address(this), totalSupply());
     }
 
-    // @dev Total supply including pre-mints
+    /// @dev Total supply including pre-mints
     function _totalSupplyWithPreMint() internal view returns (uint256) {
         return totalSupply() + amountMintedDuringPreMint - amountBatchMinted;
     }
 
-    // @notice Number minted by user including pre-mints
+    /// @notice Number minted by user including pre-mints
     function numberMintedWithPreMint(address _owner)
         public
         view

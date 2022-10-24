@@ -215,13 +215,9 @@ contract Launchpeg is BaseLaunchpeg, ILaunchpeg {
         external
         override
         onlyOwner
+        isTimeUpdateAllowed(auctionSaleStartTime)
+        isNotBeforeBlockTimestamp(_auctionSaleStartTime)
     {
-        if (auctionSaleStartTime == 0) {
-            revert Launchpeg__NotInitialized();
-        }
-        if (_auctionSaleStartTime < block.timestamp) {
-            revert Launchpeg__InvalidStartTime();
-        }
         if (preMintStartTime <= _auctionSaleStartTime) {
             revert Launchpeg__PreMintBeforeAuction();
         }
@@ -237,10 +233,9 @@ contract Launchpeg is BaseLaunchpeg, ILaunchpeg {
         external
         override
         onlyOwner
+        isTimeUpdateAllowed(preMintStartTime)
+        isNotBeforeBlockTimestamp(_preMintStartTime)
     {
-        if (preMintStartTime == 0) {
-            revert Launchpeg__NotInitialized();
-        }
         if (_preMintStartTime <= auctionSaleStartTime) {
             revert Launchpeg__PreMintBeforeAuction();
         }

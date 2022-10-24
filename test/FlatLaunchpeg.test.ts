@@ -182,6 +182,15 @@ describe('FlatLaunchpeg', () => {
       expect(await flatLaunchpeg.preMintStartTime()).to.eq(newPreMintStartTime)
     })
 
+    it('Should revert if pre-mint start time is set after pre-mint phase starts', async () => {
+      // Advance to pre-mint phase
+      const blockTimestamp = await latest()
+      await advanceTimeAndBlock(duration.seconds(config.preMintStartTime.sub(blockTimestamp).toNumber()))
+
+      const newPreMintStartTime = config.preMintStartTime.add(duration.minutes(30))
+      await expect(flatLaunchpeg.setPreMintStartTime(newPreMintStartTime)).to.be.revertedWith('Launchpeg__WrongPhase()')
+    })
+
     it('Should revert if pre-mint is before block timestamp or after allowlist', async () => {
       const blockTimestamp = await latest()
       let invalidPreMintStartTime = blockTimestamp.sub(duration.minutes(30))

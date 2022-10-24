@@ -117,13 +117,9 @@ contract FlatLaunchpeg is BaseLaunchpeg, IFlatLaunchpeg {
         external
         override
         onlyOwner
+        isTimeUpdateAllowed(preMintStartTime)
+        isNotBeforeBlockTimestamp(_preMintStartTime)
     {
-        if (preMintStartTime == 0) {
-            revert Launchpeg__NotInitialized();
-        }
-        if (_preMintStartTime < block.timestamp) {
-            revert Launchpeg__InvalidStartTime();
-        }
         if (allowlistStartTime < _preMintStartTime) {
             revert Launchpeg__AllowlistBeforePreMint();
         }
