@@ -191,6 +191,14 @@ abstract contract BaseLaunchpeg is
         _;
     }
 
+    /// @notice Checks if the current phase matches the required phase
+    modifier atPhase(Phase _phase) {
+        if (currentPhase() != _phase) {
+            revert Launchpeg__WrongPhase();
+        }
+        _;
+    }
+
     /// @notice Phase time can be updated if it has been initialized and
     // the time has not passed
     modifier isTimeUpdateAllowed(uint256 _phaseTime) {
@@ -522,7 +530,15 @@ abstract contract BaseLaunchpeg is
         preMintQueueIdx = i;
     }
 
-    function _allowlistMint(uint256 _quantity) internal {
+    /// @notice Mint NFTs during the allowlist mint
+    /// @param _quantity Quantity of NFTs to mint
+    function allowlistMint(uint256 _quantity)
+        external
+        payable
+        override
+        whenNotPaused
+        atPhase(Phase.Allowlist)
+    {
         if (_quantity > allowlist[msg.sender]) {
             revert Launchpeg__NotEligibleForAllowlistMint();
         }
@@ -556,7 +572,16 @@ abstract contract BaseLaunchpeg is
         _refundIfOver(totalCost);
     }
 
-    function _publicSaleMint(uint256 _quantity) internal {
+    /// @notice Mint NFTs during the public sale
+    /// @param _quantity Quantity of NFTs to mint
+    function publicSaleMint(uint256 _quantity)
+        external
+        payable
+        override
+        isEOA
+        whenNotPaused
+        atPhase(Phase.PublicSale)
+    {
         if (
             numberMintedWithPreMint(msg.sender) + _quantity >
             maxPerAddressDuringMint
@@ -725,6 +750,10 @@ abstract contract BaseLaunchpeg is
             }
         }
     }
+
+    /// @notice Returns the current phase
+    /// @return phase Current phase
+    function currentPhase() public view virtual override returns (Phase);
 
     /// @notice Reveals the next batch if the reveal conditions are met
     function revealNextBatch() external override isEOA whenNotPaused {

@@ -80,13 +80,6 @@ contract Launchpeg is BaseLaunchpeg, ILaunchpeg {
     /// @param auctionSaleStartTime New auction sale start time
     event AuctionSaleStartTimeSet(uint256 auctionSaleStartTime);
 
-    modifier atPhase(Phase _phase) {
-        if (currentPhase() != _phase) {
-            revert Launchpeg__WrongPhase();
-        }
-        _;
-    }
-
     /// @dev Batch mint is allowed in the allowlist and public sale phases
     modifier isBatchMintAvailable() {
         Phase currPhase = currentPhase();
@@ -302,31 +295,6 @@ contract Launchpeg is BaseLaunchpeg, ILaunchpeg {
         _batchMintPreMintedNFTs(_maxQuantity);
     }
 
-    /// @notice Mint NFTs during the allowlist mint
-    /// @param _quantity Quantity of NFTs to mint
-    function allowlistMint(uint256 _quantity)
-        external
-        payable
-        override
-        whenNotPaused
-        atPhase(Phase.Allowlist)
-    {
-        _allowlistMint(_quantity);
-    }
-
-    /// @notice Mint NFTs during the public sale
-    /// @param _quantity Quantity of NFTs to mint
-    function publicSaleMint(uint256 _quantity)
-        external
-        payable
-        override
-        isEOA
-        whenNotPaused
-        atPhase(Phase.PublicSale)
-    {
-        _publicSaleMint(_quantity);
-    }
-
     /// @notice Returns the current price of the dutch auction
     /// @param _saleStartTime Auction sale start time
     /// @return auctionSalePrice Auction sale price
@@ -362,7 +330,12 @@ contract Launchpeg is BaseLaunchpeg, ILaunchpeg {
 
     /// @notice Returns the current phase
     /// @return phase Current phase
-    function currentPhase() public view override returns (Phase) {
+    function currentPhase()
+        public
+        view
+        override(IBaseLaunchpeg, BaseLaunchpeg)
+        returns (Phase)
+    {
         if (
             auctionSaleStartTime == 0 ||
             preMintStartTime == 0 ||

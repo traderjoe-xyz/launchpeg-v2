@@ -32,13 +32,6 @@ contract FlatLaunchpeg is BaseLaunchpeg, IFlatLaunchpeg {
         uint256 salePrice
     );
 
-    modifier atPhase(Phase _phase) {
-        if (currentPhase() != _phase) {
-            revert Launchpeg__WrongPhase();
-        }
-        _;
-    }
-
     /// @dev Batch mint is allowed in the allowlist and public sale phases
     modifier isBatchMintAvailable() {
         Phase currPhase = currentPhase();
@@ -150,34 +143,14 @@ contract FlatLaunchpeg is BaseLaunchpeg, IFlatLaunchpeg {
         _batchMintPreMintedNFTs(_maxQuantity);
     }
 
-    /// @notice Mint NFTs during the allowlist mint
-    /// @param _quantity Quantity of NFTs to mint
-    function allowlistMint(uint256 _quantity)
-        external
-        payable
-        override
-        whenNotPaused
-        atPhase(Phase.Allowlist)
-    {
-        _allowlistMint(_quantity);
-    }
-
-    /// @notice Mint NFTs during the public sale
-    /// @param _quantity Quantity of NFTs to mint
-    function publicSaleMint(uint256 _quantity)
-        external
-        payable
-        override
-        isEOA
-        whenNotPaused
-        atPhase(Phase.PublicSale)
-    {
-        _publicSaleMint(_quantity);
-    }
-
     /// @notice Returns the current phase
     /// @return phase Current phase
-    function currentPhase() public view override returns (Phase) {
+    function currentPhase()
+        public
+        view
+        override(IBaseLaunchpeg, BaseLaunchpeg)
+        returns (Phase)
+    {
         if (
             preMintStartTime == 0 ||
             allowlistStartTime == 0 ||
