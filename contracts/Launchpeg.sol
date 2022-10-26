@@ -262,11 +262,6 @@ contract Launchpeg is BaseLaunchpeg, ILaunchpeg {
         ) {
             revert Launchpeg__CanNotMintThisMany();
         }
-        // initialize() method checks:
-        // amountForDevs + amountForAuction + amountForAllowlist <= collectionSize
-        // this means that if auction and allowlist mints do not exceed
-        // amountForAuction and amountForAllowlist respectively, there will be
-        // sufficient supply for devMint()
         if (amountMintedDuringAuction + _quantity > amountForAuction) {
             revert Launchpeg__MaxSupplyReached();
         }

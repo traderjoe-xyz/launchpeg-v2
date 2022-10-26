@@ -460,9 +460,12 @@ abstract contract BaseLaunchpeg is
         if (_quantity > allowlist[msg.sender]) {
             revert Launchpeg__NotEligibleForAllowlistMint();
         }
-        // initialize() method checks: amountForDevs + amountForAllowlist <= collectionSize
-        // this means that if pre-mint does not exceed amountForAllowlist there will be
-        // sufficient supply for devMint()
+        if (
+            numberMintedWithPreMint(msg.sender) + _quantity >
+            maxPerAddressDuringMint
+        ) {
+            revert Launchpeg__CanNotMintThisMany();
+        }
         if (amountMintedDuringPreMint + _quantity > amountForAllowlist) {
             revert Launchpeg__MaxSupplyReached();
         }
@@ -523,9 +526,12 @@ abstract contract BaseLaunchpeg is
         if (_quantity > allowlist[msg.sender]) {
             revert Launchpeg__NotEligibleForAllowlistMint();
         }
-        // initialize() method checks: amountForDevs + amountForAllowlist <= collectionSize
-        // this means that if allowlist mint does not exceed amountForAllowlist there will be
-        // sufficient supply for devMint()
+        if (
+            numberMintedWithPreMint(msg.sender) + _quantity >
+            maxPerAddressDuringMint
+        ) {
+            revert Launchpeg__CanNotMintThisMany();
+        }
         if (
             amountMintedDuringPreMint +
                 amountMintedDuringAllowlist +
@@ -557,6 +563,9 @@ abstract contract BaseLaunchpeg is
         ) {
             revert Launchpeg__CanNotMintThisMany();
         }
+        // ensure sufficient supply for devs. note we can skip this check
+        // in prior phases as long as they do not exceed the phase allocation
+        // and the total phase allocations do not exceed collection size
         uint256 remainingDevAmt = amountForDevs - amountMintedByDevs;
         if (
             _totalSupplyWithPreMint() + remainingDevAmt + _quantity >
