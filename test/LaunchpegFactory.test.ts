@@ -187,7 +187,8 @@ describe('LaunchpegFactory', () => {
         config.collectionSize,
         config.amountForAuction,
         config.amountForAllowlist,
-        config.amountForDevs
+        config.amountForDevs,
+        config.enableBatchReveal
       )
 
       expect(await launchpegFactory.numLaunchpegs(0)).to.equal(1)
@@ -206,12 +207,47 @@ describe('LaunchpegFactory', () => {
         config.maxBatchSize,
         config.collectionSize,
         config.amountForDevs,
-        config.amountForAllowlist
+        config.amountForAllowlist,
+        config.enableBatchReveal
       )
 
       expect(await launchpegFactory.numLaunchpegs(1)).to.equal(1)
       const launchpegAddress = await launchpegFactory.allLaunchpegs(1, 0)
       expect(await launchpegFactory.isLaunchpeg(1, launchpegAddress)).to.equal(true)
+    })
+
+    it('Should not initialize batch reveal if disabled', async () => {
+      await launchpegFactory.createLaunchpeg(
+        'JoePEG',
+        'JOEPEG',
+        projectOwner.address,
+        royaltyReceiver.address,
+        config.maxBatchSize,
+        config.collectionSize,
+        config.amountForAuction,
+        config.amountForAllowlist,
+        config.amountForDevs,
+        false
+      )
+
+      const launchpegAddress = await launchpegFactory.allLaunchpegs(0, 0)
+      const launchpeg = await ethers.getContractAt('Launchpeg', launchpegAddress)
+      expect(await launchpeg.batchReveal()).to.equal(ethers.constants.AddressZero)
+
+      await launchpegFactory.createFlatLaunchpeg(
+        'JoePEG',
+        'JOEPEG',
+        projectOwner.address,
+        royaltyReceiver.address,
+        config.maxBatchSize,
+        config.collectionSize,
+        config.amountForDevs,
+        config.amountForAllowlist,
+        false
+      )
+      const flatLaunchpegAddress = await launchpegFactory.allLaunchpegs(1, 0)
+      const flatLaunchpeg = await ethers.getContractAt('FlatLaunchpeg', flatLaunchpegAddress)
+      expect(await flatLaunchpeg.batchReveal()).to.equal(ethers.constants.AddressZero)
     })
   })
 
@@ -261,7 +297,8 @@ describe('LaunchpegFactory', () => {
         config.collectionSize,
         config.amountForAuction,
         config.amountForAllowlist,
-        config.amountForDevs
+        config.amountForDevs,
+        config.enableBatchReveal
       )
       const launchpeg0Address = await launchpegFactory.allLaunchpegs(0, 0)
       const launchpeg0 = await ethers.getContractAt('Launchpeg', launchpeg0Address)
@@ -302,7 +339,8 @@ describe('LaunchpegFactory', () => {
         config.collectionSize,
         config.amountForAuction,
         config.amountForAllowlist,
-        config.amountForDevs
+        config.amountForDevs,
+        config.enableBatchReveal
       )
       const launchpegAddress = await launchpegFactory.allLaunchpegs(0, 0)
       const launchpeg = await ethers.getContractAt('Launchpeg', launchpegAddress)

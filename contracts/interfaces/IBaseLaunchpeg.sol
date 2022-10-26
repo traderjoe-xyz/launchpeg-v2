@@ -98,6 +98,8 @@ interface IBaseLaunchpeg is IERC721Upgradeable, IERC721MetadataUpgradeable {
 
     function salePrice() external view returns (uint256);
 
+    function initializeBatchReveal(address _batchReveal) external;
+
     function setRoyaltyInfo(address receiver, uint96 feePercent) external;
 
     function seedAllowlist(
@@ -118,8 +120,6 @@ interface IBaseLaunchpeg is IERC721Upgradeable, IERC721MetadataUpgradeable {
     function setPublicSaleEndTime(uint256 _publicSaleEndTime) external;
 
     function setWithdrawAVAXStartTime(uint256 _withdrawAVAXStartTime) external;
-
-    function setBatchReveal(address _batchReveal) external;
 
     function devMint(uint256 quantity) external;
 

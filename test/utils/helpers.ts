@@ -19,6 +19,7 @@ export interface LaunchpegConfig {
   auctionDropInterval: BigNumber
   allowlistDiscount: number
   publicSaleDiscount: number
+  enableBatchReveal: boolean
   batchRevealSize: number
   batchRevealStart: BigNumber
   batchRevealInterval: BigNumber
@@ -58,6 +59,7 @@ export const getDefaultLaunchpegConfig = async (): Promise<LaunchpegConfig> => {
     auctionDropInterval: duration.minutes(20),
     allowlistDiscount: 0.1 * 10000,
     publicSaleDiscount: 0.2 * 10000,
+    enableBatchReveal: true,
     batchRevealSize: 1000,
     batchRevealStart: auctionStartTime.add(duration.minutes(REVEAL_START_OFFSET)),
     batchRevealInterval: duration.minutes(REVEAL_INTERVAL),
