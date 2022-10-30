@@ -199,6 +199,11 @@ contract FlatLaunchpeg is BaseLaunchpeg, IFlatLaunchpeg {
             super.supportsInterface(_interfaceId);
     }
 
+    /// @dev Returns pre-mint price. Used by mint methods.
+    function _getPreMintPrice() internal view override returns (uint256) {
+        return allowlistPrice;
+    }
+
     /// @dev Returns allowlist price. Used by mint methods.
     function _getAllowlistPrice() internal view override returns (uint256) {
         return allowlistPrice;

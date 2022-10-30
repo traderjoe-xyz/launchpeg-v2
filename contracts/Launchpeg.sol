@@ -249,10 +249,8 @@ contract Launchpeg is BaseLaunchpeg, ILaunchpeg {
         whenNotPaused
         atPhase(Phase.DutchAuction)
     {
-        if (
-            numberMintedWithPreMint(msg.sender) + _quantity >
-            maxPerAddressDuringMint
-        ) {
+        // use numberMinted() since pre-mint starts after auction
+        if (numberMinted(msg.sender) + _quantity > maxPerAddressDuringMint) {
             revert Launchpeg__CanNotMintThisMany();
         }
         if (amountMintedDuringAuction + _quantity > amountForAuction) {
@@ -390,12 +388,17 @@ contract Launchpeg is BaseLaunchpeg, ILaunchpeg {
             super.supportsInterface(_interfaceId);
     }
 
+    /// @dev Returns pre-mint price. Used by mint methods.
+    function _getPreMintPrice() internal view override returns (uint256) {
+        return _getAllowlistPrice();
+    }
+
     /// @dev Returns allowlist price. Used by mint methods.
     function _getAllowlistPrice() internal view override returns (uint256) {
         return
             lastAuctionPrice -
             (lastAuctionPrice * allowlistDiscountPercent) /
-            10000;
+            BASIS_POINT_PRECISION;
     }
 
     /// @dev Returns public sale price. Used by mint methods.
@@ -403,6 +406,6 @@ contract Launchpeg is BaseLaunchpeg, ILaunchpeg {
         return
             lastAuctionPrice -
             (lastAuctionPrice * publicSaleDiscountPercent) /
-            10000;
+            BASIS_POINT_PRECISION;
     }
 }

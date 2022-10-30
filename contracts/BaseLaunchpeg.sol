@@ -483,7 +483,7 @@ abstract contract BaseLaunchpeg is
         preMintQueue.push(
             PreMintData({sender: msg.sender, quantity: _quantity})
         );
-        uint256 price = _getAllowlistPrice();
+        uint256 price = _getPreMintPrice();
         uint256 totalCost = price * _quantity;
         emit PreMint(msg.sender, _quantity, price);
         _refundIfOver(totalCost);
@@ -499,7 +499,7 @@ abstract contract BaseLaunchpeg is
             revert Launchpeg__MaxSupplyForBatchMintReached();
         }
         uint256 remQuantity = _maxQuantity;
-        uint256 price = _getAllowlistPrice();
+        uint256 price = _getPreMintPrice();
         address sender;
         uint256 quantity;
         uint256 i = preMintQueueIdx;
@@ -612,6 +612,9 @@ abstract contract BaseLaunchpeg is
         );
         _refundIfOver(total);
     }
+
+    /// @dev Returns pre-mint price. Used by mint methods.
+    function _getPreMintPrice() internal view virtual returns (uint256);
 
     /// @dev Returns allowlist price. Used by mint methods.
     function _getAllowlistPrice() internal view virtual returns (uint256);
