@@ -32,15 +32,6 @@ contract FlatLaunchpeg is BaseLaunchpeg, IFlatLaunchpeg {
         uint256 salePrice
     );
 
-    /// @dev Pre-mints can be claimed in the allowlist and public sale phases
-    modifier isClaimPreMintAvailable() {
-        Phase currPhase = currentPhase();
-        if (currPhase != Phase.Allowlist && currPhase != Phase.PublicSale) {
-            revert Launchpeg__WrongPhase();
-        }
-        _;
-    }
-
     /// @notice FlatLaunchpeg initialization
     /// Can only be called once
     /// @param _collectionData Launchpeg collection data
@@ -118,28 +109,6 @@ contract FlatLaunchpeg is BaseLaunchpeg, IFlatLaunchpeg {
         }
         preMintStartTime = _preMintStartTime;
         emit PreMintStartTimeSet(_preMintStartTime);
-    }
-
-    /// @notice Mint NFTs during the pre-mint
-    /// @param _quantity Quantity of NFTs to mint
-    function preMint(uint256 _quantity)
-        external
-        payable
-        override
-        whenNotPaused
-        atPhase(Phase.PreMint)
-    {
-        _preMint(_quantity);
-    }
-
-    /// @notice Claim pre-minted NFTs
-    function claimPreMint()
-        external
-        override
-        whenNotPaused
-        isClaimPreMintAvailable
-    {
-        _claimPreMint();
     }
 
     /// @notice Returns the current phase

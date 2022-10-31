@@ -80,15 +80,6 @@ contract Launchpeg is BaseLaunchpeg, ILaunchpeg {
     /// @param auctionSaleStartTime New auction sale start time
     event AuctionSaleStartTimeSet(uint256 auctionSaleStartTime);
 
-    /// @dev Pre-mints can be claimed in the allowlist and public sale phases
-    modifier isClaimPreMintAvailable() {
-        Phase currPhase = currentPhase();
-        if (currPhase != Phase.Allowlist && currPhase != Phase.PublicSale) {
-            revert Launchpeg__WrongPhase();
-        }
-        _;
-    }
-
     /// @notice Launchpeg initialization
     /// Can only be called once
     /// @param _collectionData Launchpeg collection data
@@ -268,28 +259,6 @@ contract Launchpeg is BaseLaunchpeg, ILaunchpeg {
             Phase.DutchAuction
         );
         _refundIfOver(totalCost);
-    }
-
-    /// @notice Mint NFTs during the pre-mint
-    /// @param _quantity Quantity of NFTs to mint
-    function preMint(uint256 _quantity)
-        external
-        payable
-        override
-        whenNotPaused
-        atPhase(Phase.PreMint)
-    {
-        _preMint(_quantity);
-    }
-
-    /// @notice Claim pre-minted NFTs
-    function claimPreMint()
-        external
-        override
-        whenNotPaused
-        isClaimPreMintAvailable
-    {
-        _claimPreMint();
     }
 
     /// @notice Returns the current price of the dutch auction

@@ -76,8 +76,8 @@ abstract contract BaseLaunchpeg is
     /// @notice Tracks the amount of NFTs minted in the Pre-Mint phase
     uint256 public override amountMintedDuringPreMint;
 
-    /// @notice Tracks the amount of NFTs batch minted
-    uint256 public override amountBatchMinted;
+    /// @notice Tracks the amount of pre-minted NFTs that have been claimed
+    uint256 public override amountClaimedDuringPreMint;
 
     /// @notice Tracks the amount of NFTs minted on Allowlist phase
     uint256 public override amountMintedDuringAllowlist;
@@ -189,6 +189,15 @@ abstract contract BaseLaunchpeg is
     /// @notice Checks if the current phase matches the required phase
     modifier atPhase(Phase _phase) {
         if (currentPhase() != _phase) {
+            revert Launchpeg__WrongPhase();
+        }
+        _;
+    }
+
+    /// @notice Pre-mints can be claimed in the allowlist and public sale phases
+    modifier isClaimPreMintAvailable() {
+        Phase currPhase = currentPhase();
+        if (currPhase != Phase.Allowlist && currPhase != Phase.PublicSale) {
             revert Launchpeg__WrongPhase();
         }
         _;
@@ -454,9 +463,15 @@ abstract contract BaseLaunchpeg is
         emit DevMint(msg.sender, _quantity);
     }
 
-    /// @dev Should only be called in the pre-mint phase
+    /// @notice Mint NFTs during the pre-mint
     /// @param _quantity Quantity of NFTs to mint
-    function _preMint(uint256 _quantity) internal {
+    function preMint(uint256 _quantity)
+        external
+        payable
+        override
+        whenNotPaused
+        atPhase(Phase.PreMint)
+    {
         if (_quantity == 0) {
             revert Launchpeg__InvalidQuantity();
         }
@@ -483,16 +498,20 @@ abstract contract BaseLaunchpeg is
     }
 
     /// @notice Claim pre-minted NFTs
-    /// @dev Should only be called after pre-mint phase and before public sale ends
-    function _claimPreMint() internal {
+    function claimPreMint()
+        external
+        override
+        whenNotPaused
+        isClaimPreMintAvailable
+    {
         uint256 quantity = userPendingPreMints[msg.sender];
         if (quantity == 0) {
             revert Launchpeg__InvalidClaim();
         }
         userPendingPreMints[msg.sender] = 0;
         _preMintUsers.remove(msg.sender);
-        amountBatchMinted += quantity;
-        uint256 price = _getAllowlistPrice();
+        amountClaimedDuringPreMint += quantity;
+        uint256 price = _getPreMintPrice();
         // Skip check that quantity <= maxPerAddressDuringMint
         // since mint methods should enforce this
         _mint(msg.sender, quantity, "", false);
@@ -506,7 +525,6 @@ abstract contract BaseLaunchpeg is
     }
 
     /// @notice Claim pre-minted NFTs for users
-    /// @dev Should only be called by owner
     /// @param _maxQuantity Max quantity of NFTs to mint
     function batchClaimPreMint(uint256 _maxQuantity)
         external
@@ -516,7 +534,7 @@ abstract contract BaseLaunchpeg is
         if (_maxQuantity == 0) {
             revert Launchpeg__InvalidQuantity();
         }
-        if (amountMintedDuringPreMint == amountBatchMinted) {
+        if (amountMintedDuringPreMint == amountClaimedDuringPreMint) {
             revert Launchpeg__InvalidClaim();
         }
         uint256 remQuantity = _maxQuantity;
@@ -541,7 +559,7 @@ abstract contract BaseLaunchpeg is
                 Phase.PreMint
             );
         }
-        amountBatchMinted += (_maxQuantity - remQuantity);
+        amountClaimedDuringPreMint += (_maxQuantity - remQuantity);
     }
 
     /// @notice Mint NFTs during the allowlist mint
@@ -794,7 +812,10 @@ abstract contract BaseLaunchpeg is
 
     /// @dev Total supply including pre-mints
     function _totalSupplyWithPreMint() internal view returns (uint256) {
-        return totalSupply() + amountMintedDuringPreMint - amountBatchMinted;
+        return
+            totalSupply() +
+            amountMintedDuringPreMint -
+            amountClaimedDuringPreMint;
     }
 
     /// @notice Number minted by user including pre-mints
