@@ -102,8 +102,8 @@ abstract contract BaseLaunchpeg is
     /// @notice Start time when funds can be withdrawn
     uint256 public override withdrawAVAXStartTime;
 
-    /// @dev List of users with open pre-mint requests
-    EnumerableSet.AddressSet private _preMintUsers;
+    /// @dev Set of users with pending pre-mints
+    EnumerableSet.AddressSet private _pendingPreMintUsers;
 
     /// @dev Emitted on initializeJoeFee()
     /// @param feePercent The fees collected by Joepegs on the sale benefits
@@ -490,7 +490,7 @@ abstract contract BaseLaunchpeg is
         allowlist[msg.sender] -= _quantity;
         userPendingPreMints[msg.sender] += _quantity;
         amountMintedDuringPreMint += _quantity;
-        _preMintUsers.add(msg.sender);
+        _pendingPreMintUsers.add(msg.sender);
         uint256 price = _getPreMintPrice();
         uint256 totalCost = price * _quantity;
         emit PreMint(msg.sender, _quantity, price);
@@ -509,7 +509,7 @@ abstract contract BaseLaunchpeg is
             revert Launchpeg__InvalidClaim();
         }
         userPendingPreMints[msg.sender] = 0;
-        _preMintUsers.remove(msg.sender);
+        _pendingPreMintUsers.remove(msg.sender);
         amountClaimedDuringPreMint += quantity;
         uint256 price = _getPreMintPrice();
         // Skip check that quantity <= maxPerAddressDuringMint
@@ -541,22 +541,31 @@ abstract contract BaseLaunchpeg is
         uint256 remQuantity = _maxQuantity;
         uint256 price = _getPreMintPrice();
         address sender;
-        uint256 quantity;
-        uint256 len = _preMintUsers.length();
-        for (uint256 i; i < len && remQuantity > 0; ++i) {
-            sender = _preMintUsers.at(i);
-            quantity = userPendingPreMints[sender];
-            quantity = (quantity > remQuantity) ? remQuantity : quantity;
-            remQuantity -= quantity;
-            userPendingPreMints[sender] -= quantity;
+        uint256 userQuantity;
+        uint256 mintQuantity;
+        for (
+            uint256 len = _pendingPreMintUsers.length();
+            len > 0 && remQuantity > 0;
+            --len
+        ) {
+            sender = _pendingPreMintUsers.at(0);
+            userQuantity = userPendingPreMints[sender];
+            if (userQuantity > remQuantity) {
+                mintQuantity = remQuantity;
+            } else {
+                mintQuantity = userQuantity;
+                _pendingPreMintUsers.remove(sender);
+            }
+            remQuantity -= mintQuantity;
+            userPendingPreMints[sender] = userQuantity - mintQuantity;
             // Skip check that quantity <= maxPerAddressDuringMint
             // since mint methods should enforce this
-            _mint(sender, quantity, "", false);
+            _mint(sender, mintQuantity, "", false);
             emit Mint(
                 sender,
-                quantity,
+                mintQuantity,
                 price,
-                _totalMinted() - quantity,
+                _totalMinted() - mintQuantity,
                 Phase.PreMint
             );
         }

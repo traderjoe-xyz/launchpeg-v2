@@ -762,6 +762,9 @@ describe('Launchpeg', () => {
       // Owner batch claims more than pre-mint amount
       await launchpeg.batchClaimPreMint(10)
       expect(await launchpeg.balanceOf(alice.address)).to.eq(preMintQty)
+
+      // None left to claim
+      await expect(launchpeg.batchClaimPreMint(1)).to.be.revertedWith('Launchpeg__InvalidClaim()')
     })
 
     it('Should revert if owner batch claims invalid amount', async () => {
