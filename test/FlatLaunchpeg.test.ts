@@ -391,11 +391,6 @@ describe('FlatLaunchpeg', () => {
       expect(await flatLaunchpeg.balanceOf(alice.address)).to.eq(preMintQty)
     })
 
-    it('Should not allow user to claim pre-mint after public sale', async () => {
-      await initializePhasesFlatLaunchpeg(flatLaunchpeg, config, Phase.Ended)
-      await expect(flatLaunchpeg.claimPreMint()).to.be.revertedWith('Launchpeg__WrongPhase()')
-    })
-
     it('Should revert if user tries to mint for another phase', async () => {
       await initializePhasesFlatLaunchpeg(flatLaunchpeg, config, Phase.PublicSale)
       await expect(flatLaunchpeg.connect(alice).preMint(1)).to.be.revertedWith('Launchpeg__WrongPhase()')

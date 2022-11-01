@@ -735,12 +735,7 @@ describe('Launchpeg', () => {
       expect(await launchpeg.numberMintedWithPreMint(alice.address)).to.eq(preMintQty)
     })
 
-    it('Should not allow user to claim pre-mint after public sale', async () => {
-      await initializePhasesLaunchpeg(launchpeg, config, Phase.Ended)
-      await expect(launchpeg.claimPreMint()).to.be.revertedWith('Launchpeg__WrongPhase()')
-    })
-
-    it('Should allow owner to batch claim pre-mint at any time', async () => {
+    it('Should allow owner or user to batch claim pre-mint after pre-mint phase', async () => {
       const preMintQty = 5
       await initializePhasesLaunchpeg(launchpeg, config, Phase.PreMint)
       await launchpeg.connect(dev).seedAllowlist([alice.address], [preMintQty])
@@ -748,12 +743,14 @@ describe('Launchpeg', () => {
       // Alice pre-mints
       await launchpeg.connect(alice).preMint(preMintQty, { value: allowlistPrice.mul(preMintQty) })
 
-      // Owner batch claims during pre-mint phase
-      await launchpeg.batchClaimPreMint(1)
+      // Bob batch claims during allowlist phase
+      let blockTimestamp = await latest()
+      await advanceTimeAndBlock(duration.seconds(config.allowlistStartTime.sub(blockTimestamp).toNumber()))
+      await launchpeg.connect(bob).batchClaimPreMint(1)
       expect(await launchpeg.balanceOf(alice.address)).to.eq(1)
 
       // Owner batch claims during public sale phase
-      let blockTimestamp = await latest()
+      blockTimestamp = await latest()
       await advanceTimeAndBlock(duration.seconds(config.publicSaleStartTime.sub(blockTimestamp).toNumber()))
       await launchpeg.batchClaimPreMint(1)
       expect(await launchpeg.balanceOf(alice.address)).to.eq(2)
@@ -762,8 +759,6 @@ describe('Launchpeg', () => {
       blockTimestamp = await latest()
       await advanceTimeAndBlock(duration.seconds(config.publicSaleEndTime.sub(blockTimestamp).toNumber()))
 
-      // Alice can no longer claim
-      await expect(launchpeg.connect(alice).claimPreMint()).to.be.revertedWith('Launchpeg__WrongPhase()')
       // Owner batch claims more than pre-mint amount
       await launchpeg.batchClaimPreMint(10)
       expect(await launchpeg.balanceOf(alice.address)).to.eq(preMintQty)

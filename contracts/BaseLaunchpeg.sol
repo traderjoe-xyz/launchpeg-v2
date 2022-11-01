@@ -194,10 +194,10 @@ abstract contract BaseLaunchpeg is
         _;
     }
 
-    /// @notice Pre-mints can be claimed in the allowlist and public sale phases
+    /// @notice Pre-mints can be claimed from the allowlist phase
+    /// (including after sale ends)
     modifier isClaimPreMintAvailable() {
-        Phase currPhase = currentPhase();
-        if (currPhase != Phase.Allowlist && currPhase != Phase.PublicSale) {
+        if (block.timestamp < allowlistStartTime) {
             revert Launchpeg__WrongPhase();
         }
         _;
@@ -529,7 +529,8 @@ abstract contract BaseLaunchpeg is
     function batchClaimPreMint(uint256 _maxQuantity)
         external
         override
-        onlyOwner
+        whenNotPaused
+        isClaimPreMintAvailable
     {
         if (_maxQuantity == 0) {
             revert Launchpeg__InvalidQuantity();

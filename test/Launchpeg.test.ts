@@ -414,14 +414,12 @@ describe('Launchpeg', () => {
     })
 
     it('Should revert if user mints before auction has started', async () => {
-      await expect(launchpeg.auctionMint(1)).to.be.revertedWith('Launchpeg__WrongPhase()')
-
       await initializePhasesLaunchpeg(launchpeg, config, Phase.NotStarted)
-
       await expect(launchpeg.auctionMint(1)).to.be.revertedWith('Launchpeg__WrongPhase()')
     })
 
     it('Should revert if user tries to mint for another phase', async () => {
+      await initializePhasesLaunchpeg(launchpeg, config, Phase.DutchAuction)
       await expect(launchpeg.connect(alice).preMint(1)).to.be.revertedWith('Launchpeg__WrongPhase()')
       await expect(launchpeg.connect(alice).claimPreMint()).to.be.revertedWith('Launchpeg__WrongPhase()')
       await expect(launchpeg.connect(alice).allowlistMint(1)).to.be.revertedWith('Launchpeg__WrongPhase()')
@@ -614,11 +612,6 @@ describe('Launchpeg', () => {
       expect(await launchpeg.balanceOf(alice.address)).to.eq(preMintQty)
     })
 
-    it('Should not allow user to claim pre-mint after public sale', async () => {
-      await initializePhasesLaunchpeg(launchpeg, config, Phase.Ended)
-      await expect(launchpeg.claimPreMint()).to.be.revertedWith('Launchpeg__WrongPhase()')
-    })
-
     it('Should return discounted public sale price', async () => {
       await initializePhasesLaunchpeg(launchpeg, config, Phase.PublicSale)
       expect(await launchpeg.salePrice()).to.eq(ethers.utils.parseUnits('0.8', 18))
@@ -628,6 +621,11 @@ describe('Launchpeg', () => {
       await expect(launchpeg.connect(alice).auctionMint(1)).to.be.revertedWith('Launchpeg__WrongPhase()')
       await expect(launchpeg.connect(alice).preMint(1)).to.be.revertedWith('Launchpeg__WrongPhase()')
       await expect(launchpeg.connect(alice).allowlistMint(1)).to.be.revertedWith('Launchpeg__WrongPhase()')
+    })
+
+    it('Should revert if user tries to mint after public sale phase ends', async () => {
+      await initializePhasesLaunchpeg(launchpeg, config, Phase.Ended)
+      await expect(launchpeg.connect(alice).publicSaleMint(1)).to.be.revertedWith('Launchpeg__WrongPhase()')
     })
   })
 
