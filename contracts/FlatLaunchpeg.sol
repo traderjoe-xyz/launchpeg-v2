@@ -32,13 +32,6 @@ contract FlatLaunchpeg is BaseLaunchpeg, IFlatLaunchpeg {
         uint256 salePrice
     );
 
-    modifier atPhase(Phase _phase) {
-        if (currentPhase() != _phase) {
-            revert Launchpeg__WrongPhase();
-        }
-        _;
-    }
-
     /// @dev Batch mint is allowed in the allowlist and public sale phases
     modifier isBatchMintAvailable() {
         Phase currPhase = currentPhase();
@@ -150,78 +143,14 @@ contract FlatLaunchpeg is BaseLaunchpeg, IFlatLaunchpeg {
         _batchMintPreMintedNFTs(_maxQuantity);
     }
 
-    /// @notice Mint NFTs during the allowlist mint
-    /// @param _quantity Quantity of NFTs to mint
-    function allowlistMint(uint256 _quantity)
-        external
-        payable
-        override
-        whenNotPaused
-        atPhase(Phase.Allowlist)
-    {
-        if (_quantity > allowlist[msg.sender]) {
-            revert Launchpeg__NotEligibleForAllowlistMint();
-        }
-        if (
-            (_totalSupplyWithPreMint() + _quantity > collectionSize) ||
-            (amountMintedDuringPreMint +
-                amountMintedDuringAllowlist +
-                _quantity) >
-            amountForAllowlist
-        ) {
-            revert Launchpeg__MaxSupplyReached();
-        }
-        allowlist[msg.sender] -= _quantity;
-        uint256 totalCost = allowlistPrice * _quantity;
-
-        _mint(msg.sender, _quantity, "", false);
-        amountMintedDuringAllowlist += _quantity;
-        emit Mint(
-            msg.sender,
-            _quantity,
-            allowlistPrice,
-            _totalMinted() - _quantity,
-            Phase.Allowlist
-        );
-        _refundIfOver(totalCost);
-    }
-
-    /// @notice Mint NFTs during the public sale
-    /// @param _quantity Quantity of NFTs to mint
-    function publicSaleMint(uint256 _quantity)
-        external
-        payable
-        override
-        isEOA
-        whenNotPaused
-        atPhase(Phase.PublicSale)
-    {
-        if (
-            numberMintedWithPreMint(msg.sender) + _quantity >
-            maxPerAddressDuringMint
-        ) {
-            revert Launchpeg__CanNotMintThisMany();
-        }
-        if (_totalSupplyWithPreMint() + _quantity > collectionSize) {
-            revert Launchpeg__MaxSupplyReached();
-        }
-        uint256 total = salePrice * _quantity;
-
-        _mint(msg.sender, _quantity, "", false);
-        amountMintedDuringPublicSale += _quantity;
-        emit Mint(
-            msg.sender,
-            _quantity,
-            salePrice,
-            _totalMinted() - _quantity,
-            Phase.PublicSale
-        );
-        _refundIfOver(total);
-    }
-
     /// @notice Returns the current phase
     /// @return phase Current phase
-    function currentPhase() public view override returns (Phase) {
+    function currentPhase()
+        public
+        view
+        override(IBaseLaunchpeg, BaseLaunchpeg)
+        returns (Phase)
+    {
         if (
             preMintStartTime == 0 ||
             allowlistStartTime == 0 ||
@@ -270,8 +199,18 @@ contract FlatLaunchpeg is BaseLaunchpeg, IFlatLaunchpeg {
             super.supportsInterface(_interfaceId);
     }
 
-    /// @dev Returns pre-mint price. Used by _preMint() and _batchMintPreMintedNFTs() methods.
-    function _preMintPrice() internal view override returns (uint256) {
+    /// @dev Returns pre-mint price. Used by mint methods.
+    function _getPreMintPrice() internal view override returns (uint256) {
         return allowlistPrice;
+    }
+
+    /// @dev Returns allowlist price. Used by mint methods.
+    function _getAllowlistPrice() internal view override returns (uint256) {
+        return allowlistPrice;
+    }
+
+    /// @dev Returns public sale price. Used by mint methods.
+    function _getPublicSalePrice() internal view override returns (uint256) {
+        return salePrice;
     }
 }

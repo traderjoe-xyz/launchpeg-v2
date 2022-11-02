@@ -30,7 +30,7 @@ contract LaunchpegFactory is
         string symbol,
         address indexed projectOwner,
         address indexed royaltyReceiver,
-        uint256 maxBatchSize,
+        uint256 maxPerAddressDuringMint,
         uint256 collectionSize,
         uint256 amountForAuction,
         uint256 amountForAllowlist,
@@ -43,7 +43,7 @@ contract LaunchpegFactory is
         string symbol,
         address indexed projectOwner,
         address indexed royaltyReceiver,
-        uint256 maxBatchSize,
+        uint256 maxPerAddressDuringMint,
         uint256 collectionSize,
         uint256 amountForDevs,
         uint256 amountForAllowlist
@@ -135,7 +135,7 @@ contract LaunchpegFactory is
     /// @param _symbol ERC721 symbol
     /// @param _projectOwner The project owner
     /// @param _royaltyReceiver Royalty fee collector
-    /// @param _maxBatchSize Max amount of NFTs that can be minted at once
+    /// @param _maxPerAddressDuringMint Max amount of NFTs an address can mint
     /// @param _collectionSize The collection size (e.g 10000)
     /// @param _amountForAuction Amount of NFTs available for the auction (e.g 8000)
     /// @param _amountForAllowlist Amount of NFTs available for the allowlist mint (e.g 1000)
@@ -147,7 +147,7 @@ contract LaunchpegFactory is
         string memory _symbol,
         address _projectOwner,
         address _royaltyReceiver,
-        uint256 _maxBatchSize,
+        uint256 _maxPerAddressDuringMint,
         uint256 _collectionSize,
         uint256 _amountForAuction,
         uint256 _amountForAllowlist,
@@ -165,7 +165,7 @@ contract LaunchpegFactory is
                     name: _name,
                     symbol: _symbol,
                     batchReveal: _enableBatchReveal ? batchReveal : address(0),
-                    maxBatchSize: _maxBatchSize,
+                    maxPerAddressDuringMint: _maxPerAddressDuringMint,
                     collectionSize: _collectionSize,
                     amountForDevs: _amountForDevs,
                     amountForAuction: _amountForAuction,
@@ -188,7 +188,7 @@ contract LaunchpegFactory is
             _symbol,
             _projectOwner,
             _royaltyReceiver,
-            _maxBatchSize,
+            _maxPerAddressDuringMint,
             _collectionSize,
             _amountForAuction,
             _amountForAllowlist,
@@ -203,7 +203,7 @@ contract LaunchpegFactory is
     /// @param _symbol ERC721 symbol
     /// @param _projectOwner The project owner
     /// @param _royaltyReceiver Royalty fee collector
-    /// @param _maxBatchSize Max amount of NFTs that can be minted at once
+    /// @param _maxPerAddressDuringMint Max amount of NFTs an address can mint
     /// @param _collectionSize The collection size (e.g 10000)
     /// @param _amountForDevs Amount of NFTs reserved for `projectOwner` (e.g 200)
     /// @param _amountForAllowlist Amount of NFTs available for the allowlist mint (e.g 1000)
@@ -214,7 +214,7 @@ contract LaunchpegFactory is
         string memory _symbol,
         address _projectOwner,
         address _royaltyReceiver,
-        uint256 _maxBatchSize,
+        uint256 _maxPerAddressDuringMint,
         uint256 _collectionSize,
         uint256 _amountForDevs,
         uint256 _amountForAllowlist,
@@ -231,7 +231,7 @@ contract LaunchpegFactory is
                     name: _name,
                     symbol: _symbol,
                     batchReveal: _enableBatchReveal ? batchReveal : address(0),
-                    maxBatchSize: _maxBatchSize,
+                    maxPerAddressDuringMint: _maxPerAddressDuringMint,
                     collectionSize: _collectionSize,
                     amountForDevs: _amountForDevs,
                     // set 0 auction amount for FlatLaunchpeg
@@ -255,7 +255,7 @@ contract LaunchpegFactory is
             _symbol,
             _projectOwner,
             _royaltyReceiver,
-            _maxBatchSize,
+            _maxPerAddressDuringMint,
             _collectionSize,
             _amountForDevs,
             _amountForAllowlist

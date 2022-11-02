@@ -80,13 +80,6 @@ contract Launchpeg is BaseLaunchpeg, ILaunchpeg {
     /// @param auctionSaleStartTime New auction sale start time
     event AuctionSaleStartTimeSet(uint256 auctionSaleStartTime);
 
-    modifier atPhase(Phase _phase) {
-        if (currentPhase() != _phase) {
-            revert Launchpeg__WrongPhase();
-        }
-        _;
-    }
-
     /// @dev Batch mint is allowed in the allowlist and public sale phases
     modifier isBatchMintAvailable() {
         Phase currPhase = currentPhase();
@@ -256,19 +249,12 @@ contract Launchpeg is BaseLaunchpeg, ILaunchpeg {
         whenNotPaused
         atPhase(Phase.DutchAuction)
     {
-        uint256 remainingSupply = (amountForAuction + amountMintedByDevs) -
-            totalSupply();
-        if (remainingSupply == 0) {
-            revert Launchpeg__MaxSupplyReached();
-        }
-        if (remainingSupply < _quantity) {
-            _quantity = remainingSupply;
-        }
-        if (
-            numberMintedWithPreMint(msg.sender) + _quantity >
-            maxPerAddressDuringMint
-        ) {
+        // use numberMinted() since pre-mint starts after auction
+        if (numberMinted(msg.sender) + _quantity > maxPerAddressDuringMint) {
             revert Launchpeg__CanNotMintThisMany();
+        }
+        if (amountMintedDuringAuction + _quantity > amountForAuction) {
+            revert Launchpeg__MaxSupplyReached();
         }
         lastAuctionPrice = getAuctionPrice(auctionSaleStartTime);
         uint256 totalCost = lastAuctionPrice * _quantity;
@@ -307,76 +293,6 @@ contract Launchpeg is BaseLaunchpeg, ILaunchpeg {
         _batchMintPreMintedNFTs(_maxQuantity);
     }
 
-    /// @notice Mint NFTs during the allowlist mint
-    /// @param _quantity Quantity of NFTs to mint
-    function allowlistMint(uint256 _quantity)
-        external
-        payable
-        override
-        whenNotPaused
-        atPhase(Phase.Allowlist)
-    {
-        if (_quantity > allowlist[msg.sender]) {
-            revert Launchpeg__NotEligibleForAllowlistMint();
-        }
-        if (
-            (_totalSupplyWithPreMint() + _quantity > collectionSize) ||
-            (amountMintedDuringPreMint +
-                amountMintedDuringAllowlist +
-                _quantity >
-                amountForAllowlist)
-        ) {
-            revert Launchpeg__MaxSupplyReached();
-        }
-        allowlist[msg.sender] -= _quantity;
-        uint256 price = allowlistPrice();
-        uint256 totalCost = price * _quantity;
-
-        _mint(msg.sender, _quantity, "", false);
-        amountMintedDuringAllowlist += _quantity;
-        emit Mint(
-            msg.sender,
-            _quantity,
-            price,
-            _totalMinted() - _quantity,
-            Phase.Allowlist
-        );
-        _refundIfOver(totalCost);
-    }
-
-    /// @notice Mint NFTs during the public sale
-    /// @param _quantity Quantity of NFTs to mint
-    function publicSaleMint(uint256 _quantity)
-        external
-        payable
-        override
-        isEOA
-        whenNotPaused
-        atPhase(Phase.PublicSale)
-    {
-        if (
-            numberMintedWithPreMint(msg.sender) + _quantity >
-            maxPerAddressDuringMint
-        ) {
-            revert Launchpeg__CanNotMintThisMany();
-        }
-        if (_totalSupplyWithPreMint() + _quantity > collectionSize) {
-            revert Launchpeg__MaxSupplyReached();
-        }
-        uint256 price = salePrice();
-
-        _mint(msg.sender, _quantity, "", false);
-        amountMintedDuringPublicSale += _quantity;
-        emit Mint(
-            msg.sender,
-            _quantity,
-            price,
-            _totalMinted() - _quantity,
-            Phase.PublicSale
-        );
-        _refundIfOver(price * _quantity);
-    }
-
     /// @notice Returns the current price of the dutch auction
     /// @param _saleStartTime Auction sale start time
     /// @return auctionSalePrice Auction sale price
@@ -401,24 +317,23 @@ contract Launchpeg is BaseLaunchpeg, ILaunchpeg {
     /// @notice Returns the price of the allowlist mint
     /// @return allowlistSalePrice Mint List sale price
     function allowlistPrice() public view override returns (uint256) {
-        return
-            lastAuctionPrice -
-            (lastAuctionPrice * allowlistDiscountPercent) /
-            10000;
+        return _getAllowlistPrice();
     }
 
     /// @notice Returns the price of the public sale
     /// @return publicSalePrice Public sale price
     function salePrice() public view override returns (uint256) {
-        return
-            lastAuctionPrice -
-            (lastAuctionPrice * publicSaleDiscountPercent) /
-            10000;
+        return _getPublicSalePrice();
     }
 
     /// @notice Returns the current phase
     /// @return phase Current phase
-    function currentPhase() public view override returns (Phase) {
+    function currentPhase()
+        public
+        view
+        override(IBaseLaunchpeg, BaseLaunchpeg)
+        returns (Phase)
+    {
         if (
             auctionSaleStartTime == 0 ||
             preMintStartTime == 0 ||
@@ -473,8 +388,24 @@ contract Launchpeg is BaseLaunchpeg, ILaunchpeg {
             super.supportsInterface(_interfaceId);
     }
 
-    /// @dev Returns pre-mint price. Used by _preMint() and _batchMintPreMintedNFTs() methods.
-    function _preMintPrice() internal view override returns (uint256) {
-        return allowlistPrice();
+    /// @dev Returns pre-mint price. Used by mint methods.
+    function _getPreMintPrice() internal view override returns (uint256) {
+        return _getAllowlistPrice();
+    }
+
+    /// @dev Returns allowlist price. Used by mint methods.
+    function _getAllowlistPrice() internal view override returns (uint256) {
+        return
+            lastAuctionPrice -
+            (lastAuctionPrice * allowlistDiscountPercent) /
+            BASIS_POINT_PRECISION;
+    }
+
+    /// @dev Returns public sale price. Used by mint methods.
+    function _getPublicSalePrice() internal view override returns (uint256) {
+        return
+            lastAuctionPrice -
+            (lastAuctionPrice * publicSaleDiscountPercent) /
+            BASIS_POINT_PRECISION;
     }
 }

@@ -41,9 +41,6 @@ abstract contract BaseLaunchpeg is
     /// @notice Amount of NFTs available for the allowlist mint (e.g 1000)
     uint256 public override amountForAllowlist;
 
-    /// @notice Max amount of NFTs that can be minted at once
-    uint256 public override maxBatchSize;
-
     /// @notice Max amount of NFTs an address can mint
     uint256 public override maxPerAddressDuringMint;
 
@@ -194,6 +191,14 @@ abstract contract BaseLaunchpeg is
         _;
     }
 
+    /// @notice Checks if the current phase matches the required phase
+    modifier atPhase(Phase _phase) {
+        if (currentPhase() != _phase) {
+            revert Launchpeg__WrongPhase();
+        }
+        _;
+    }
+
     /// @notice Phase time can be updated if it has been initialized and
     // the time has not passed
     modifier isTimeUpdateAllowed(uint256 _phaseTime) {
@@ -239,8 +244,11 @@ abstract contract BaseLaunchpeg is
         ) {
             revert Launchpeg__LargerCollectionSizeNeeded();
         }
-        if (_collectionData.maxBatchSize > _collectionData.collectionSize) {
-            revert Launchpeg__InvalidMaxBatchSize();
+        if (
+            _collectionData.maxPerAddressDuringMint >
+            _collectionData.collectionSize
+        ) {
+            revert Launchpeg__InvalidMaxPerAddressDuringMint();
         }
 
         // Default royalty is 5%
@@ -248,9 +256,8 @@ abstract contract BaseLaunchpeg is
         _initializeJoeFee(_ownerData.joeFeePercent, _ownerData.joeFeeCollector);
 
         batchReveal = IBatchReveal(_collectionData.batchReveal);
-        maxBatchSize = _collectionData.maxBatchSize;
         collectionSize = _collectionData.collectionSize;
-        maxPerAddressDuringMint = _collectionData.maxBatchSize;
+        maxPerAddressDuringMint = _collectionData.maxPerAddressDuringMint;
         amountForDevs = _collectionData.amountForDevs;
         amountForAllowlist = _collectionData.amountForAllowlist;
 
@@ -438,6 +445,9 @@ abstract contract BaseLaunchpeg is
             revert Launchpeg__MaxSupplyForDevReached();
         }
         amountMintedByDevs = amountMintedByDevs + _quantity;
+        // Max no. of NFTs to mint in a batch. Used to control gas costs
+        // for subsequent transfers in ERC721A contracts.
+        uint256 maxBatchSize = maxPerAddressDuringMint;
         uint256 numChunks = _quantity / maxBatchSize;
         for (uint256 i; i < numChunks; i++) {
             _mint(msg.sender, maxBatchSize, "", false);
@@ -459,9 +469,12 @@ abstract contract BaseLaunchpeg is
             revert Launchpeg__NotEligibleForAllowlistMint();
         }
         if (
-            (_totalSupplyWithPreMint() + _quantity > collectionSize) ||
-            (amountMintedDuringPreMint + _quantity > amountForAllowlist)
+            numberMintedWithPreMint(msg.sender) + _quantity >
+            maxPerAddressDuringMint
         ) {
+            revert Launchpeg__CanNotMintThisMany();
+        }
+        if (amountMintedDuringPreMint + _quantity > amountForAllowlist) {
             revert Launchpeg__MaxSupplyReached();
         }
         allowlist[msg.sender] -= _quantity;
@@ -470,7 +483,7 @@ abstract contract BaseLaunchpeg is
         preMintQueue.push(
             PreMintData({sender: msg.sender, quantity: _quantity})
         );
-        uint256 price = _preMintPrice();
+        uint256 price = _getPreMintPrice();
         uint256 totalCost = price * _quantity;
         emit PreMint(msg.sender, _quantity, price);
         _refundIfOver(totalCost);
@@ -486,7 +499,7 @@ abstract contract BaseLaunchpeg is
             revert Launchpeg__MaxSupplyForBatchMintReached();
         }
         uint256 remQuantity = _maxQuantity;
-        uint256 price = _preMintPrice();
+        uint256 price = _getPreMintPrice();
         address sender;
         uint256 quantity;
         uint256 i = preMintQueueIdx;
@@ -517,7 +530,97 @@ abstract contract BaseLaunchpeg is
         preMintQueueIdx = i;
     }
 
-    function _preMintPrice() internal view virtual returns (uint256);
+    /// @notice Mint NFTs during the allowlist mint
+    /// @param _quantity Quantity of NFTs to mint
+    function allowlistMint(uint256 _quantity)
+        external
+        payable
+        override
+        whenNotPaused
+        atPhase(Phase.Allowlist)
+    {
+        if (_quantity > allowlist[msg.sender]) {
+            revert Launchpeg__NotEligibleForAllowlistMint();
+        }
+        if (
+            numberMintedWithPreMint(msg.sender) + _quantity >
+            maxPerAddressDuringMint
+        ) {
+            revert Launchpeg__CanNotMintThisMany();
+        }
+        if (
+            amountMintedDuringPreMint +
+                amountMintedDuringAllowlist +
+                _quantity >
+            amountForAllowlist
+        ) {
+            revert Launchpeg__MaxSupplyReached();
+        }
+        allowlist[msg.sender] -= _quantity;
+        uint256 price = _getAllowlistPrice();
+        uint256 totalCost = price * _quantity;
+
+        _mint(msg.sender, _quantity, "", false);
+        amountMintedDuringAllowlist += _quantity;
+        emit Mint(
+            msg.sender,
+            _quantity,
+            price,
+            _totalMinted() - _quantity,
+            Phase.Allowlist
+        );
+        _refundIfOver(totalCost);
+    }
+
+    /// @notice Mint NFTs during the public sale
+    /// @param _quantity Quantity of NFTs to mint
+    function publicSaleMint(uint256 _quantity)
+        external
+        payable
+        override
+        isEOA
+        whenNotPaused
+        atPhase(Phase.PublicSale)
+    {
+        if (
+            numberMintedWithPreMint(msg.sender) + _quantity >
+            maxPerAddressDuringMint
+        ) {
+            revert Launchpeg__CanNotMintThisMany();
+        }
+        // ensure sufficient supply for devs. note we can skip this check
+        // in prior phases as long as they do not exceed the phase allocation
+        // and the total phase allocations do not exceed collection size
+        uint256 remainingDevAmt = amountForDevs - amountMintedByDevs;
+        if (
+            _totalSupplyWithPreMint() + remainingDevAmt + _quantity >
+            collectionSize
+        ) {
+            revert Launchpeg__MaxSupplyReached();
+        }
+        uint256 price = _getPublicSalePrice();
+        uint256 total = price * _quantity;
+
+        _mint(msg.sender, _quantity, "", false);
+        amountMintedDuringPublicSale += _quantity;
+        emit Mint(
+            msg.sender,
+            _quantity,
+            price,
+            _totalMinted() - _quantity,
+            Phase.PublicSale
+        );
+        _refundIfOver(total);
+    }
+
+    /// @dev Returns pre-mint price. Used by mint methods.
+    function _getPreMintPrice() internal view virtual returns (uint256);
+
+    /// @dev Returns allowlist price. Used by mint methods.
+    function _getAllowlistPrice() internal view virtual returns (uint256);
+
+    /// @dev Returns public sale price. Used by mint methods.
+    function _getPublicSalePrice() internal view virtual returns (uint256);
 
     /// @notice Withdraw AVAX to the given recipient
     /// @param _to Recipient of the earned AVAX
@@ -650,6 +753,10 @@ abstract contract BaseLaunchpeg is
             }
         }
     }
+
+    /// @notice Returns the current phase
+    /// @return phase Current phase
+    function currentPhase() public view virtual override returns (Phase);
 
     /// @notice Reveals the next batch if the reveal conditions are met
     function revealNextBatch() external override isEOA whenNotPaused {

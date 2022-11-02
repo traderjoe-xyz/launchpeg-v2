@@ -57,7 +57,7 @@ describe('Launchpeg', () => {
         'JoePEG',
         'JOEPEG',
         batchReveal.address,
-        config.maxBatchSize,
+        config.maxPerAddressDuringMint,
         config.collectionSize,
         config.amountForDevs,
         config.amountForAuction,
@@ -89,7 +89,7 @@ describe('Launchpeg', () => {
             'JoePEG',
             'JOEPEG',
             batchReveal.address,
-            config.maxBatchSize,
+            config.maxPerAddressDuringMint,
             config.collectionSize,
             config.amountForDevs,
             config.amountForAuction,
@@ -343,9 +343,9 @@ describe('Launchpeg', () => {
       expect(await launchpeg.balanceOf(alice.address)).to.eq(0)
       await launchpeg
         .connect(alice)
-        .auctionMint(config.maxBatchSize, { value: config.startPrice.mul(config.maxBatchSize) })
-      expect(await launchpeg.balanceOf(alice.address)).to.eq(config.maxBatchSize)
-      expect(await launchpeg.amountMintedDuringAuction()).to.eq(config.maxBatchSize)
+        .auctionMint(config.maxPerAddressDuringMint, { value: config.startPrice.mul(config.maxPerAddressDuringMint) })
+      expect(await launchpeg.balanceOf(alice.address)).to.eq(config.maxPerAddressDuringMint)
+      expect(await launchpeg.amountMintedDuringAuction()).to.eq(config.maxPerAddressDuringMint)
     })
 
     it('Should show the correct ownership data after mint', async () => {
@@ -353,7 +353,7 @@ describe('Launchpeg', () => {
 
       await launchpeg
         .connect(alice)
-        .auctionMint(config.maxBatchSize, { value: config.startPrice.mul(config.maxBatchSize) })
+        .auctionMint(config.maxPerAddressDuringMint, { value: config.startPrice.mul(config.maxPerAddressDuringMint) })
 
       let ownershipData = await launchpeg.getOwnershipData(1)
 
@@ -391,8 +391,7 @@ describe('Launchpeg', () => {
 
       await launchpeg.connect(projectOwner).devMint(5)
       await launchpeg.connect(alice).auctionMint(3, { value: config.startPrice.mul(3) })
-      // Alice will mint up to allocation (5) even though she sends more (3+3)
-      await launchpeg.connect(alice).auctionMint(3, { value: config.startPrice.mul(3) })
+      await launchpeg.connect(alice).auctionMint(2, { value: config.startPrice.mul(2) })
       expect(await launchpeg.balanceOf(alice.address)).to.eq(5)
 
       await expect(launchpeg.connect(bob).auctionMint(5, { value: config.startPrice.mul(5) })).to.be.revertedWith(
@@ -406,7 +405,7 @@ describe('Launchpeg', () => {
       config.amountForAllowlist = 5
       config.amountForDevs = 5
       config.batchRevealSize = 5
-      config.maxBatchSize = 3
+      config.maxPerAddressDuringMint = 3
       await deployLaunchpeg()
       await initializePhasesLaunchpeg(launchpeg, config, Phase.DutchAuction)
 
@@ -541,10 +540,10 @@ describe('Launchpeg', () => {
   })
 
   describe('Public sale phase', () => {
-    it('Should allow user to mint up to max batch size', async () => {
+    it('Should allow user to mint up to max per address', async () => {
       await initializePhasesLaunchpeg(launchpeg, config, Phase.PublicSale)
 
-      const quantity = config.maxBatchSize
+      const quantity = config.maxPerAddressDuringMint
       const discount = config.startPrice.mul(config.publicSaleDiscount).div(10000)
       const price = config.startPrice.sub(discount)
       await launchpeg.connect(bob).publicSaleMint(quantity, { value: price.mul(quantity) })
@@ -566,7 +565,7 @@ describe('Launchpeg', () => {
       config.amountForAuction = 0
       config.amountForDevs = 0
       config.amountForAllowlist = 0
-      config.maxBatchSize = 10
+      config.maxPerAddressDuringMint = 10
       config.batchRevealSize = 10
       await deployLaunchpeg()
       await initializePhasesLaunchpeg(launchpeg, config, Phase.PublicSale)

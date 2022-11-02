@@ -57,7 +57,7 @@ describe('FlatLaunchpeg', () => {
         'JoePEG',
         'JOEPEG',
         batchReveal.address,
-        config.maxBatchSize,
+        config.maxPerAddressDuringMint,
         config.collectionSize,
         config.amountForDevs,
         0,
@@ -87,7 +87,7 @@ describe('FlatLaunchpeg', () => {
             'JoePEG',
             'JOEPEG',
             batchReveal.address,
-            config.maxBatchSize,
+            config.maxPerAddressDuringMint,
             config.collectionSize,
             config.amountForDevs,
             0,
@@ -311,10 +311,10 @@ describe('FlatLaunchpeg', () => {
   })
 
   describe('Public sale phase', () => {
-    it('Should allow user to mint up to max batch size', async () => {
+    it('Should allow user to mint up to max per address', async () => {
       await initializePhasesFlatLaunchpeg(flatLaunchpeg, config, Phase.PublicSale)
 
-      const quantity = config.maxBatchSize
+      const quantity = config.maxPerAddressDuringMint
       const price = config.flatPublicSalePrice
       await flatLaunchpeg.connect(bob).publicSaleMint(quantity, { value: price.mul(quantity) })
       expect(await flatLaunchpeg.balanceOf(bob.address)).to.eq(quantity)
@@ -357,7 +357,7 @@ describe('FlatLaunchpeg', () => {
       config.collectionSize = 10
       config.amountForDevs = 0
       config.amountForAllowlist = 0
-      config.maxBatchSize = 10
+      config.maxPerAddressDuringMint = 10
       config.batchRevealSize = 10
       await deployFlatLaunchpeg()
       await initializePhasesFlatLaunchpeg(flatLaunchpeg, config, Phase.PublicSale)

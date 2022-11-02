@@ -57,7 +57,7 @@ describe('Launchpeg', () => {
         'JoePEG',
         'JOEPEG',
         enableBatchReveal ? batchReveal.address : ethers.constants.AddressZero,
-        config.maxBatchSize,
+        config.maxPerAddressDuringMint,
         config.collectionSize,
         config.amountForDevs,
         config.amountForAuction,
@@ -86,8 +86,7 @@ describe('Launchpeg', () => {
       expect(await launchpeg.collectionSize()).to.eq(config.collectionSize)
       expect(await launchpeg.amountForDevs()).to.eq(config.amountForDevs)
       expect(await launchpeg.amountForAllowlist()).to.eq(config.amountForAllowlist)
-      expect(await launchpeg.maxBatchSize()).to.eq(config.maxBatchSize)
-      expect(await launchpeg.maxPerAddressDuringMint()).to.eq(config.maxBatchSize)
+      expect(await launchpeg.maxPerAddressDuringMint()).to.eq(config.maxPerAddressDuringMint)
 
       await expect(
         launchpeg.initialize(
@@ -95,7 +94,7 @@ describe('Launchpeg', () => {
             'JoePEG',
             'JOEPEG',
             batchReveal.address,
-            config.maxBatchSize,
+            config.maxPerAddressDuringMint,
             config.collectionSize,
             config.amountForDevs,
             config.amountForAuction,
@@ -114,7 +113,7 @@ describe('Launchpeg', () => {
             'JoePEG',
             'JOEPEG',
             batchReveal.address,
-            config.maxBatchSize,
+            config.maxPerAddressDuringMint,
             config.collectionSize,
             config.amountForDevs,
             config.amountForAuction,
@@ -139,7 +138,7 @@ describe('Launchpeg', () => {
             'JoePEG',
             'JOEPEG',
             batchReveal.address,
-            config.maxBatchSize,
+            config.maxPerAddressDuringMint,
             config.collectionSize,
             config.amountForDevs,
             config.amountForAuction,
@@ -168,9 +167,9 @@ describe('Launchpeg', () => {
       await expect(deployLaunchpeg()).to.be.revertedWith('Launchpeg__LargerCollectionSizeNeeded()')
     })
 
-    it('Should revert if max batch size is larger than collection size', async () => {
-      config.maxBatchSize = config.collectionSize * 2
-      await expect(deployLaunchpeg()).to.be.revertedWith('Launchpeg__InvalidMaxBatchSize()')
+    it('Should revert if max mint per address is larger than collection size', async () => {
+      config.maxPerAddressDuringMint = config.collectionSize * 2
+      await expect(deployLaunchpeg()).to.be.revertedWith('Launchpeg__InvalidMaxPerAddressDuringMint()')
     })
   })
 
@@ -185,7 +184,7 @@ describe('Launchpeg', () => {
             'JoePEG',
             'JOEPEG',
             batchReveal.address,
-            config.maxBatchSize,
+            config.maxPerAddressDuringMint,
             config.collectionSize,
             config.amountForDevs,
             config.amountForAuction,
@@ -206,7 +205,7 @@ describe('Launchpeg', () => {
             'JoePEG',
             'JOEPEG',
             batchReveal.address,
-            config.maxBatchSize,
+            config.maxPerAddressDuringMint,
             config.collectionSize,
             config.amountForDevs,
             config.amountForAuction,
@@ -460,10 +459,10 @@ describe('Launchpeg', () => {
         'SafeAccessControlEnumerableUpgradeable__SenderMissingRoleAndIsNotOwner'
       )
 
-      await launchpeg.connect(projectOwner).devMint(config.maxBatchSize)
+      await launchpeg.connect(projectOwner).devMint(config.maxPerAddressDuringMint)
 
-      // mint amount that is not a multiple of max batch size
-      await launchpeg.connect(projectOwner).devMint(config.amountForDevs - config.maxBatchSize - 1)
+      // mint amount that is not a multiple of max per address
+      await launchpeg.connect(projectOwner).devMint(config.amountForDevs - config.maxPerAddressDuringMint - 1)
       await launchpeg.connect(projectOwner).devMint(1)
       expect(await launchpeg.balanceOf(projectOwner.address)).to.eq(config.amountForDevs)
 
@@ -551,6 +550,15 @@ describe('Launchpeg', () => {
       expect(await launchpeg.userAddressToPreMintAmount(alice.address)).to.eq(quantity + remQuantity)
     })
 
+    it('Should revert if user pre-mints more than max per address', async () => {
+      const quantity = config.maxPerAddressDuringMint + 1
+      await launchpeg.connect(dev).seedAllowlist([alice.address], [quantity])
+
+      await expect(
+        launchpeg.connect(alice).preMint(quantity, { value: allowlistPrice.mul(quantity) })
+      ).to.be.revertedWith('Launchpeg__CanNotMintThisMany()')
+    })
+
     it('Should revert when pre-mint quantity is 0', async () => {
       await expect(launchpeg.connect(alice).preMint(0)).to.be.revertedWith('Launchpeg__InvalidQuantity()')
     })
@@ -598,11 +606,11 @@ describe('Launchpeg', () => {
 
     it('Should allow whitelisted user to pre-mint and allowlist mint up to allowlist amount', async () => {
       await initializePhasesLaunchpeg(launchpeg, config, Phase.PreMint)
-      await launchpeg.connect(dev).seedAllowlist([alice.address], [10])
+      await launchpeg.connect(dev).seedAllowlist([alice.address], [5])
 
       // Alice pre-mints
-      const preMintQty = 5
-      const allowlistMintQty = 5
+      const preMintQty = 3
+      const allowlistMintQty = 2
       await launchpeg.connect(alice).preMint(preMintQty, { value: allowlistPrice.mul(preMintQty) })
 
       // Advance to allowlist phase
@@ -621,7 +629,19 @@ describe('Launchpeg', () => {
       )
     })
 
+    it('Should revert if user allowlist mints more than max per address', async () => {
+      await initializePhasesLaunchpeg(launchpeg, config, Phase.Allowlist)
+      const quantity = config.maxPerAddressDuringMint + 1
+      await launchpeg.connect(dev).seedAllowlist([alice.address], [quantity])
+
+      await expect(
+        launchpeg.connect(alice).allowlistMint(quantity, { value: allowlistPrice.mul(quantity) })
+      ).to.be.revertedWith('Launchpeg__CanNotMintThisMany()')
+    })
+
     it('Should allow any user to batch mint', async () => {
+      config.maxPerAddressDuringMint = 10
+      await deployLaunchpeg()
       await initializePhasesLaunchpeg(launchpeg, config, Phase.PreMint)
       await launchpeg.connect(dev).seedAllowlist([alice.address, bob.address], [10, 5])
 
@@ -668,6 +688,22 @@ describe('Launchpeg', () => {
     beforeEach(async () => {
       const discount = config.startPrice.mul(config.allowlistDiscount).div(10000)
       allowlistPrice = config.startPrice.sub(discount)
+    })
+
+    it('Should not allow user to mint more than collection size - dev amount', async () => {
+      config.collectionSize = 100
+      config.amountForDevs = 95
+      config.amountForAuction = 5
+      config.amountForAllowlist = 0
+      config.maxPerAddressDuringMint = 5
+      config.batchRevealSize = 5
+      await deployLaunchpeg()
+      await initializePhasesLaunchpeg(launchpeg, config, Phase.PublicSale)
+
+      await launchpeg.connect(alice).publicSaleMint(5, { value: allowlistPrice.mul(5) })
+      await expect(launchpeg.connect(bob).publicSaleMint(5, { value: allowlistPrice.mul(5) })).to.be.revertedWith(
+        'Launchpeg__MaxSupplyReached()'
+      )
     })
 
     it('Should allow any user to batch mint', async () => {

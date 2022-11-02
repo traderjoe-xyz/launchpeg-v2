@@ -21,7 +21,7 @@ contract LaunchpegLens {
         string name;
         string symbol;
         uint256 collectionSize;
-        uint256 maxBatchSize;
+        uint256 maxPerAddressDuringMint;
         uint256 totalSupply;
         string unrevealedURI;
         string baseURI;
@@ -204,8 +204,8 @@ contract LaunchpegLens {
         data.collectionData.symbol = ERC721AUpgradeable(_launchpeg).symbol();
         data.collectionData.collectionSize = IBaseLaunchpeg(_launchpeg)
             .collectionSize();
-        data.collectionData.maxBatchSize = IBaseLaunchpeg(_launchpeg)
-            .maxBatchSize();
+        data.collectionData.maxPerAddressDuringMint = IBaseLaunchpeg(_launchpeg)
+            .maxPerAddressDuringMint();
         data.collectionData.totalSupply = ERC721AUpgradeable(_launchpeg)
             .totalSupply();
         data.collectionData.unrevealedURI = IBaseLaunchpeg(_launchpeg)

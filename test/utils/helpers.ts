@@ -9,7 +9,7 @@ export interface LaunchpegConfig {
   allowlistStartTime: BigNumber
   publicSaleStartTime: BigNumber
   publicSaleEndTime: BigNumber
-  maxBatchSize: number
+  maxPerAddressDuringMint: number
   collectionSize: number
   amountForAuction: number
   amountForAllowlist: number
@@ -49,7 +49,7 @@ export const getDefaultLaunchpegConfig = async (): Promise<LaunchpegConfig> => {
     allowlistStartTime: auctionStartTime.add(duration.minutes(ALLOWLIST_START_OFFSET)),
     publicSaleStartTime: auctionStartTime.add(duration.minutes(PUBLIC_SALE_START_OFFSET)),
     publicSaleEndTime: auctionStartTime.add(duration.minutes(PUBLIC_SALE_END_OFFSET)),
-    maxBatchSize: 5,
+    maxPerAddressDuringMint: 5,
     collectionSize: 10000,
     amountForAuction: 8000,
     amountForAllowlist: 1900,
