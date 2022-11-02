@@ -449,17 +449,7 @@ abstract contract BaseLaunchpeg is
             revert Launchpeg__MaxSupplyForDevReached();
         }
         amountMintedByDevs = amountMintedByDevs + _quantity;
-        // Max no. of NFTs to mint in a batch. Used to control gas costs
-        // for subsequent transfers in ERC721A contracts.
-        uint256 maxBatchSize = maxPerAddressDuringMint;
-        uint256 numChunks = _quantity / maxBatchSize;
-        for (uint256 i; i < numChunks; i++) {
-            _mint(msg.sender, maxBatchSize, "", false);
-        }
-        uint256 remainingQty = _quantity % maxBatchSize;
-        if (remainingQty != 0) {
-            _mint(msg.sender, remainingQty, "", false);
-        }
+        _batchMint(msg.sender, _quantity, maxPerAddressDuringMint);
         emit DevMint(msg.sender, _quantity);
     }
 
@@ -512,9 +502,7 @@ abstract contract BaseLaunchpeg is
         _pendingPreMintUsers.remove(msg.sender);
         amountClaimedDuringPreMint += quantity;
         uint256 price = _getPreMintPrice();
-        // Skip check that quantity <= maxPerAddressDuringMint
-        // since mint methods should enforce this
-        _mint(msg.sender, quantity, "", false);
+        _batchMint(msg.sender, quantity, maxPerAddressDuringMint);
         emit Mint(
             msg.sender,
             quantity,
@@ -538,6 +526,7 @@ abstract contract BaseLaunchpeg is
         if (amountMintedDuringPreMint == amountClaimedDuringPreMint) {
             revert Launchpeg__InvalidClaim();
         }
+        uint256 maxBatchSize = maxPerAddressDuringMint;
         uint256 remQuantity = _maxQuantity;
         uint256 price = _getPreMintPrice();
         address sender;
@@ -558,9 +547,7 @@ abstract contract BaseLaunchpeg is
             }
             remQuantity -= mintQuantity;
             userPendingPreMints[sender] = userQuantity - mintQuantity;
-            // Skip check that quantity <= maxPerAddressDuringMint
-            // since mint methods should enforce this
-            _mint(sender, mintQuantity, "", false);
+            _batchMint(sender, mintQuantity, maxBatchSize);
             emit Mint(
                 sender,
                 mintQuantity,
@@ -836,5 +823,25 @@ abstract contract BaseLaunchpeg is
         returns (uint256)
     {
         return _numberMinted(_owner) + userPendingPreMints[_owner];
+    }
+
+    /// @dev Mint in batches of up to `_maxBatchSize`. Used to control
+    /// gas costs for subsequent transfers in ERC721A contracts.
+    /// @param _sender address to mint NFTs to
+    /// @param _quantity No. of NFTs to mint
+    /// @param _maxBatchSize Max no. of NFTs to mint in a batch
+    function _batchMint(
+        address _sender,
+        uint256 _quantity,
+        uint256 _maxBatchSize
+    ) private {
+        uint256 numChunks = _quantity / _maxBatchSize;
+        for (uint256 i; i < numChunks; ++i) {
+            _mint(_sender, _maxBatchSize, "", false);
+        }
+        uint256 remainingQty = _quantity % _maxBatchSize;
+        if (remainingQty != 0) {
+            _mint(_sender, remainingQty, "", false);
+        }
     }
 }
