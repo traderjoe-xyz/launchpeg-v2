@@ -682,11 +682,6 @@ describe('Launchpeg', () => {
       await initializePhasesLaunchpeg(launchpeg, config, Phase.Allowlist)
       await expect(launchpeg.connect(alice).claimPreMint()).to.be.revertedWith('Launchpeg__InvalidClaim()')
     })
-
-    it('Should revert when user has no pre-mint to claim', async () => {
-      await initializePhasesLaunchpeg(launchpeg, config, Phase.Allowlist)
-      await expect(launchpeg.connect(alice).claimPreMint()).to.be.revertedWith('Launchpeg__InvalidClaim()')
-    })
   })
 
   describe('Public sale phase', () => {
@@ -742,6 +737,7 @@ describe('Launchpeg', () => {
 
       // Alice pre-mints
       await launchpeg.connect(alice).preMint(preMintQty, { value: allowlistPrice.mul(preMintQty) })
+      await expect(launchpeg.batchClaimPreMint(1)).to.be.revertedWith('Launchpeg__WrongPhase()')
 
       // Bob batch claims during allowlist phase
       let blockTimestamp = await latest()
