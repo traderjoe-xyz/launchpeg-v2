@@ -550,24 +550,6 @@ describe('Launchpeg', () => {
       expect(await launchpeg.userPendingPreMints(alice.address)).to.eq(quantity + remQuantity)
     })
 
-    it('Should revert if user pre-mints more than max per address', async () => {
-      const quantity = config.maxPerAddressDuringMint + 1
-      await launchpeg.connect(dev).seedAllowlist([alice.address], [quantity])
-
-      await expect(
-        launchpeg.connect(alice).preMint(quantity, { value: allowlistPrice.mul(quantity) })
-      ).to.be.revertedWith('Launchpeg__CanNotMintThisMany()')
-    })
-
-    it('Should revert if user pre-mints more than max per address', async () => {
-      const quantity = config.maxPerAddressDuringMint + 1
-      await launchpeg.connect(dev).seedAllowlist([alice.address], [quantity])
-
-      await expect(
-        launchpeg.connect(alice).preMint(quantity, { value: allowlistPrice.mul(quantity) })
-      ).to.be.revertedWith('Launchpeg__CanNotMintThisMany()')
-    })
-
     it('Should revert when pre-mint quantity is 0', async () => {
       await expect(launchpeg.connect(alice).preMint(0)).to.be.revertedWith('Launchpeg__InvalidQuantity()')
     })
@@ -636,16 +618,6 @@ describe('Launchpeg', () => {
       await expect(launchpeg.connect(alice).allowlistMint(1, { value: allowlistPrice })).to.be.revertedWith(
         'Launchpeg__NotEligibleForAllowlistMint()'
       )
-    })
-
-    it('Should revert if user allowlist mints more than max per address', async () => {
-      await initializePhasesLaunchpeg(launchpeg, config, Phase.Allowlist)
-      const quantity = config.maxPerAddressDuringMint + 1
-      await launchpeg.connect(dev).seedAllowlist([alice.address], [quantity])
-
-      await expect(
-        launchpeg.connect(alice).allowlistMint(quantity, { value: allowlistPrice.mul(quantity) })
-      ).to.be.revertedWith('Launchpeg__CanNotMintThisMany()')
     })
 
     it('Should allow user to claim pre-mint', async () => {
