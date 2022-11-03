@@ -3,7 +3,6 @@ pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/common/ERC2981Upgradeable.sol";
-import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
 
 import "erc721a-upgradeable/contracts/ERC721AUpgradeable.sol";
@@ -24,8 +23,6 @@ abstract contract BaseLaunchpeg is
     ERC2981Upgradeable
 {
     using StringsUpgradeable for uint256;
-
-    using EnumerableSet for EnumerableSet.AddressSet;
 
     /// @notice Role granted to project owners
     bytes32 public constant override PROJECT_OWNER_ROLE =
@@ -67,9 +64,6 @@ abstract contract BaseLaunchpeg is
     /// the pre-mint or allowlist mint
     mapping(address => uint256) public override allowlist;
 
-    // @notice The remaining no. of pre-minted NFTs for the user address
-    mapping(address => uint256) public override userPendingPreMints;
-
     /// @notice Tracks the amount of NFTs minted by `projectOwner`
     uint256 public override amountMintedByDevs;
 
@@ -102,8 +96,8 @@ abstract contract BaseLaunchpeg is
     /// @notice Start time when funds can be withdrawn
     uint256 public override withdrawAVAXStartTime;
 
-    /// @dev Set of users with pending pre-mints
-    EnumerableSet.AddressSet private _pendingPreMintUsers;
+    /// @dev Set of pending pre-mint data (user address and quantity)
+    PreMintDataSet private _pendingPreMints;
 
     /// @dev Emitted on initializeJoeFee()
     /// @param feePercent The fees collected by Joepegs on the sale benefits
@@ -221,6 +215,24 @@ abstract contract BaseLaunchpeg is
             revert Launchpeg__InvalidStartTime();
         }
         _;
+    }
+
+    /// @dev Structure for pre-mint data
+    struct PreMintData {
+        // address to mint NFTs to
+        address sender;
+        // No. of NFTs to mint
+        uint96 quantity;
+    }
+
+    /// @dev Structure for a set of pre-mint data.
+    struct PreMintDataSet {
+        // pre-mint data array
+        PreMintData[] preMintDataArr;
+        // maps a user address to the index of the user's pre-mint data in the
+        // `preMintDataArr` array. Plus 1 because index 0 means data does not
+        // exist for that user.
+        mapping(address => uint256) indexes;
     }
 
     /// @dev BaseLaunchpeg initialization
@@ -433,6 +445,21 @@ abstract contract BaseLaunchpeg is
         emit WithdrawAVAXStartTimeSet(_withdrawAVAXStartTime);
     }
 
+    /// @notice The remaining no. of pre-minted NFTs for the user address
+    /// @param _user user address
+    function userPendingPreMints(address _user)
+        public
+        view
+        override
+        returns (uint256)
+    {
+        uint256 idx = _pendingPreMints.indexes[_user];
+        if (idx == 0) {
+            return 0;
+        }
+        return _pendingPreMints.preMintDataArr[idx - 1].quantity;
+    }
+
     /// @notice Mint NFTs to the project owner
     /// @dev Can only mint up to `amountForDevs`
     /// @param _quantity Quantity of NFTs to mint
@@ -478,9 +505,8 @@ abstract contract BaseLaunchpeg is
             revert Launchpeg__MaxSupplyReached();
         }
         allowlist[msg.sender] -= _quantity;
-        userPendingPreMints[msg.sender] += _quantity;
         amountMintedDuringPreMint += _quantity;
-        _pendingPreMintUsers.add(msg.sender);
+        _addPreMint(msg.sender, uint96(_quantity));
         uint256 price = _getPreMintPrice();
         uint256 totalCost = price * _quantity;
         emit PreMint(msg.sender, _quantity, price);
@@ -494,12 +520,22 @@ abstract contract BaseLaunchpeg is
         whenNotPaused
         isClaimPreMintAvailable
     {
-        uint256 quantity = userPendingPreMints[msg.sender];
-        if (quantity == 0) {
+        PreMintDataSet storage set = _pendingPreMints;
+        uint256 idx = set.indexes[msg.sender];
+        if (idx == 0) {
             revert Launchpeg__InvalidClaim();
         }
-        userPendingPreMints[msg.sender] = 0;
-        _pendingPreMintUsers.remove(msg.sender);
+        // quantity should not be 0
+        uint256 quantity = set.preMintDataArr[idx - 1].quantity;
+        uint256 toDeleteIdx = idx - 1;
+        uint256 lastIdx = set.preMintDataArr.length - 1;
+        if (toDeleteIdx != lastIdx) {
+            PreMintData memory lastPreMintData = set.preMintDataArr[lastIdx];
+            set.preMintDataArr[toDeleteIdx] = lastPreMintData;
+            set.indexes[lastPreMintData.sender] = idx;
+        }
+        set.preMintDataArr.pop();
+        delete set.indexes[msg.sender];
         amountClaimedDuringPreMint += quantity;
         uint256 price = _getPreMintPrice();
         _batchMint(msg.sender, quantity, maxPerAddressDuringMint);
@@ -527,29 +563,31 @@ abstract contract BaseLaunchpeg is
             revert Launchpeg__InvalidClaim();
         }
         uint256 maxBatchSize = maxPerAddressDuringMint;
-        uint256 remQuantity = _maxQuantity;
         uint256 price = _getPreMintPrice();
-        address sender;
-        uint256 userQuantity;
-        uint256 mintQuantity;
+        uint96 remQuantity = uint96(_maxQuantity);
+        uint96 mintQuantity;
+        PreMintDataSet storage set = _pendingPreMints;
         for (
-            uint256 len = _pendingPreMintUsers.length();
+            uint256 len = _pendingPreMints.preMintDataArr.length;
             len > 0 && remQuantity > 0;
-            --len
+
         ) {
-            sender = _pendingPreMintUsers.at(0);
-            userQuantity = userPendingPreMints[sender];
-            if (userQuantity > remQuantity) {
+            PreMintData memory preMintData = _pendingPreMints.preMintDataArr[
+                len - 1
+            ];
+            if (preMintData.quantity > remQuantity) {
                 mintQuantity = remQuantity;
+                set.preMintDataArr[len - 1].quantity -= mintQuantity;
             } else {
-                mintQuantity = userQuantity;
-                _pendingPreMintUsers.remove(sender);
+                mintQuantity = preMintData.quantity;
+                set.preMintDataArr.pop();
+                delete set.indexes[preMintData.sender];
+                --len;
             }
             remQuantity -= mintQuantity;
-            userPendingPreMints[sender] = userQuantity - mintQuantity;
-            _batchMint(sender, mintQuantity, maxBatchSize);
+            _batchMint(preMintData.sender, mintQuantity, maxBatchSize);
             emit Mint(
-                sender,
+                preMintData.sender,
                 mintQuantity,
                 price,
                 _totalMinted() - mintQuantity,
@@ -822,7 +860,26 @@ abstract contract BaseLaunchpeg is
         override
         returns (uint256)
     {
-        return _numberMinted(_owner) + userPendingPreMints[_owner];
+        return _numberMinted(_owner) + userPendingPreMints(_owner);
+    }
+
+    /// @dev Adds pre-mint data to the pre-mint data set
+    /// @param _sender address to mint NFTs to
+    /// @param _quantity No. of NFTs to mint
+    function _addPreMint(address _sender, uint96 _quantity) private {
+        PreMintDataSet storage set = _pendingPreMints;
+        uint256 idx = set.indexes[_sender];
+        // user exists in set
+        if (idx != 0) {
+            set.preMintDataArr[idx - 1].quantity += _quantity;
+        } else {
+            PreMintData memory preMintData = PreMintData({
+                sender: _sender,
+                quantity: _quantity
+            });
+            set.preMintDataArr.push(preMintData);
+            set.indexes[_sender] = set.preMintDataArr.length;
+        }
     }
 
     /// @dev Mint in batches of up to `_maxBatchSize`. Used to control

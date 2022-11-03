@@ -664,15 +664,16 @@ describe('Launchpeg', () => {
       expect(await launchpeg.balanceOf(alice.address)).to.eq(0)
       expect(await launchpeg.balanceOf(bob.address)).to.eq(0)
 
+      // Alice claims pre-mint
+      await launchpeg.connect(alice).claimPreMint()
+      expect(await launchpeg.balanceOf(alice.address)).to.eq(aliceQty)
+      expect(await launchpeg.userPendingPreMints(alice.address)).to.eq(0)
+
       // Bob claims pre-mint
       await launchpeg.connect(bob).claimPreMint()
       expect(await launchpeg.balanceOf(bob.address)).to.eq(bobQty)
       expect(await launchpeg.userPendingPreMints(bob.address)).to.eq(0)
 
-      // Alice claims pre-mint
-      await launchpeg.connect(alice).claimPreMint()
-      expect(await launchpeg.balanceOf(alice.address)).to.eq(aliceQty)
-      expect(await launchpeg.userPendingPreMints(alice.address)).to.eq(0)
       expect(await launchpeg.amountClaimedDuringPreMint()).to.eq(aliceQty + bobQty)
       expect(await launchpeg.numberMinted(bob.address)).to.eq(bobQty)
       expect(await launchpeg.numberMintedWithPreMint(bob.address)).to.eq(bobQty)
