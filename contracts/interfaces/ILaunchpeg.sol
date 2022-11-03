@@ -29,6 +29,11 @@ interface ILaunchpeg is IBaseLaunchpeg {
 
     function lastAuctionPrice() external view returns (uint256);
 
+    function getAuctionPrice(uint256 _saleStartTime)
+        external
+        view
+        returns (uint256);
+
     function initialize(
         CollectionData calldata _collectionData,
         CollectionOwnerData calldata _ownerData
@@ -50,9 +55,4 @@ interface ILaunchpeg is IBaseLaunchpeg {
     function setAuctionSaleStartTime(uint256 _auctionSaleStartTime) external;
 
     function auctionMint(uint256 _quantity) external payable;
-
-    function getAuctionPrice(uint256 _saleStartTime)
-        external
-        view
-        returns (uint256);
 }

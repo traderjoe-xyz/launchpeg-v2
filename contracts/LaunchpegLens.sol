@@ -35,6 +35,7 @@ contract LaunchpegLens {
     }
 
     struct LaunchpegData {
+        ILaunchpeg.Phase currentPhase;
         uint256 amountForAuction;
         uint256 amountForAllowlist;
         uint256 amountForDevs;
@@ -50,12 +51,11 @@ contract LaunchpegLens {
         uint256 auctionDropPerStep;
         uint256 allowlistDiscountPercent;
         uint256 publicSaleDiscountPercent;
-        ILaunchpeg.Phase currentPhase;
         uint256 auctionPrice;
         uint256 allowlistPrice;
         uint256 publicSalePrice;
-        uint256 amountMintedDuringAuction;
         uint256 lastAuctionPrice;
+        uint256 amountMintedDuringAuction;
         uint256 amountMintedDuringPreMint;
         uint256 amountMintedDuringAllowlist;
         uint256 amountMintedDuringPublicSale;
@@ -108,25 +108,26 @@ contract LaunchpegLens {
         FlatLaunchpeg
     }
 
-    /// @notice ILaunchpegInterface identifier
-    bytes4 public immutable launchpegInterface;
+    /// @notice LaunchpegFactory V1 address
+    address public immutable launchpegFactoryV1;
 
-    /// @notice IFlatLaunchpegInterface identifier
-    bytes4 public immutable flatLaunchpegInterface;
-
-    /// @notice LaunchpegFactory address
-    address public immutable launchpegFactory;
+    /// @notice LaunchpegFactory V2 address
+    address public immutable launchpegFactoryV2;
 
     /// @notice BatchReveal address
     address public immutable batchReveal;
 
     /// @dev LaunchpegLens constructor
-    /// @param _launchpegFactory LaunchpegFactory address
+    /// @param _launchpegFactoryV1 LaunchpegFactory address V1
+    /// @param _launchpegFactoryV2 LaunchpegFactory address V2
     /// @param _batchReveal BatchReveal address
-    constructor(address _launchpegFactory, address _batchReveal) {
-        launchpegInterface = type(ILaunchpeg).interfaceId;
-        flatLaunchpegInterface = type(IFlatLaunchpeg).interfaceId;
-        launchpegFactory = _launchpegFactory;
+    constructor(
+        address _launchpegFactoryV1,
+        address _launchpegFactoryV2,
+        address _batchReveal
+    ) {
+        launchpegFactoryV1 = _launchpegFactoryV1;
+        launchpegFactoryV2 = _launchpegFactoryV2;
         batchReveal = _batchReveal;
     }
 
@@ -138,10 +139,14 @@ contract LaunchpegLens {
         view
         returns (LaunchpegType)
     {
-        if (IBaseLaunchpeg(_contract).supportsInterface(launchpegInterface)) {
+        if (
+            ILaunchpegFactory(launchpegFactoryV1).isLaunchpeg(0, _contract) ||
+            ILaunchpegFactory(launchpegFactoryV2).isLaunchpeg(0, _contract)
+        ) {
             return LaunchpegType.Launchpeg;
         } else if (
-            IBaseLaunchpeg(_contract).supportsInterface(flatLaunchpegInterface)
+            ILaunchpegFactory(launchpegFactoryV1).isLaunchpeg(1, _contract) ||
+            ILaunchpegFactory(launchpegFactoryV2).isLaunchpeg(1, _contract)
         ) {
             return LaunchpegType.FlatLaunchpeg;
         } else {
@@ -162,7 +167,7 @@ contract LaunchpegLens {
         address _user
     ) external view returns (LensData[] memory) {
         LensData[] memory LensDatas;
-        uint256 numLaunchpegs = ILaunchpegFactory(launchpegFactory)
+        uint256 numLaunchpegs = ILaunchpegFactory(launchpegFactoryV1)
             .numLaunchpegs(_type);
 
         uint256 end = _limit > numLaunchpegs ? numLaunchpegs : _limit;
@@ -172,7 +177,7 @@ contract LaunchpegLens {
 
         for (uint256 i = 0; i < LensDatas.length; i++) {
             LensDatas[i] = getLaunchpegData(
-                ILaunchpegFactory(launchpegFactory).allLaunchpegs(
+                ILaunchpegFactory(launchpegFactoryV1).allLaunchpegs(
                     _type,
                     end - 1 - i
                 ),
@@ -339,7 +344,7 @@ contract LaunchpegLens {
     }
 
     function getProjectOwners(address _launchpeg)
-        internal
+        private
         view
         returns (address[] memory)
     {
