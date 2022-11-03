@@ -24,6 +24,24 @@ abstract contract BaseLaunchpeg is
 {
     using StringsUpgradeable for uint256;
 
+    /// @dev Structure for pre-mint data
+    struct PreMintData {
+        // address to mint NFTs to
+        address sender;
+        // No. of NFTs to mint
+        uint96 quantity;
+    }
+
+    /// @dev Structure for a set of pre-mint data.
+    struct PreMintDataSet {
+        // pre-mint data array
+        PreMintData[] preMintDataArr;
+        // maps a user address to the index of the user's pre-mint data in the
+        // `preMintDataArr` array. Plus 1 because index 0 means data does not
+        // exist for that user.
+        mapping(address => uint256) indexes;
+    }
+
     /// @notice Role granted to project owners
     bytes32 public constant override PROJECT_OWNER_ROLE =
         keccak256("PROJECT_OWNER_ROLE");
@@ -215,24 +233,6 @@ abstract contract BaseLaunchpeg is
             revert Launchpeg__InvalidStartTime();
         }
         _;
-    }
-
-    /// @dev Structure for pre-mint data
-    struct PreMintData {
-        // address to mint NFTs to
-        address sender;
-        // No. of NFTs to mint
-        uint96 quantity;
-    }
-
-    /// @dev Structure for a set of pre-mint data.
-    struct PreMintDataSet {
-        // pre-mint data array
-        PreMintData[] preMintDataArr;
-        // maps a user address to the index of the user's pre-mint data in the
-        // `preMintDataArr` array. Plus 1 because index 0 means data does not
-        // exist for that user.
-        mapping(address => uint256) indexes;
     }
 
     /// @dev BaseLaunchpeg initialization
@@ -482,7 +482,7 @@ abstract contract BaseLaunchpeg is
 
     /// @notice Mint NFTs during the pre-mint
     /// @param _quantity Quantity of NFTs to mint
-    function preMint(uint256 _quantity)
+    function preMint(uint96 _quantity)
         external
         payable
         override
@@ -506,7 +506,7 @@ abstract contract BaseLaunchpeg is
         }
         allowlist[msg.sender] -= _quantity;
         amountMintedDuringPreMint += _quantity;
-        _addPreMint(msg.sender, uint96(_quantity));
+        _addPreMint(msg.sender, _quantity);
         uint256 price = _getPreMintPrice();
         uint256 totalCost = price * _quantity;
         emit PreMint(msg.sender, _quantity, price);
@@ -520,22 +520,11 @@ abstract contract BaseLaunchpeg is
         whenNotPaused
         isClaimPreMintAvailable
     {
-        PreMintDataSet storage set = _pendingPreMints;
-        uint256 idx = set.indexes[msg.sender];
-        if (idx == 0) {
+        uint256 quantity = userPendingPreMints(msg.sender);
+        if (quantity == 0) {
             revert Launchpeg__InvalidClaim();
         }
-        // quantity should not be 0
-        uint256 quantity = set.preMintDataArr[idx - 1].quantity;
-        uint256 toDeleteIdx = idx - 1;
-        uint256 lastIdx = set.preMintDataArr.length - 1;
-        if (toDeleteIdx != lastIdx) {
-            PreMintData memory lastPreMintData = set.preMintDataArr[lastIdx];
-            set.preMintDataArr[toDeleteIdx] = lastPreMintData;
-            set.indexes[lastPreMintData.sender] = idx;
-        }
-        set.preMintDataArr.pop();
-        delete set.indexes[msg.sender];
+        _removePreMint(msg.sender, uint96(quantity));
         amountClaimedDuringPreMint += quantity;
         uint256 price = _getPreMintPrice();
         _batchMint(msg.sender, quantity, maxPerAddressDuringMint);
@@ -550,7 +539,7 @@ abstract contract BaseLaunchpeg is
 
     /// @notice Claim pre-minted NFTs for users
     /// @param _maxQuantity Max quantity of NFTs to mint
-    function batchClaimPreMint(uint256 _maxQuantity)
+    function batchClaimPreMint(uint96 _maxQuantity)
         external
         override
         whenNotPaused
@@ -564,9 +553,8 @@ abstract contract BaseLaunchpeg is
         }
         uint256 maxBatchSize = maxPerAddressDuringMint;
         uint256 price = _getPreMintPrice();
-        uint96 remQuantity = uint96(_maxQuantity);
+        uint96 remQuantity = _maxQuantity;
         uint96 mintQuantity;
-        PreMintDataSet storage set = _pendingPreMints;
         for (
             uint256 len = _pendingPreMints.preMintDataArr.length;
             len > 0 && remQuantity > 0;
@@ -577,13 +565,11 @@ abstract contract BaseLaunchpeg is
             ];
             if (preMintData.quantity > remQuantity) {
                 mintQuantity = remQuantity;
-                set.preMintDataArr[len - 1].quantity -= mintQuantity;
             } else {
                 mintQuantity = preMintData.quantity;
-                set.preMintDataArr.pop();
-                delete set.indexes[preMintData.sender];
                 --len;
             }
+            _removePreMint(preMintData.sender, mintQuantity);
             remQuantity -= mintQuantity;
             _batchMint(preMintData.sender, mintQuantity, maxBatchSize);
             emit Mint(
@@ -865,7 +851,7 @@ abstract contract BaseLaunchpeg is
 
     /// @dev Adds pre-mint data to the pre-mint data set
     /// @param _sender address to mint NFTs to
-    /// @param _quantity No. of NFTs to mint
+    /// @param _quantity No. of NFTs to add to mint quantity
     function _addPreMint(address _sender, uint96 _quantity) private {
         PreMintDataSet storage set = _pendingPreMints;
         uint256 idx = set.indexes[_sender];
@@ -879,6 +865,37 @@ abstract contract BaseLaunchpeg is
             });
             set.preMintDataArr.push(preMintData);
             set.indexes[_sender] = set.preMintDataArr.length;
+        }
+    }
+
+    /// @dev Removes pre-mint data from the pre-mint data set
+    /// @param _sender address to mint NFTs to
+    /// @param _quantity No. of NFTs to remove from mint quantity
+    function _removePreMint(address _sender, uint96 _quantity) private {
+        PreMintDataSet storage set = _pendingPreMints;
+        uint256 idx = set.indexes[_sender];
+        // user exists in set
+        if (idx != 0) {
+            uint96 currQuantity = set.preMintDataArr[idx - 1].quantity;
+            uint96 newQuantity = (currQuantity > _quantity)
+                ? currQuantity - _quantity
+                : 0;
+            // remove from set
+            if (newQuantity == 0) {
+                uint256 toDeleteIdx = idx - 1;
+                uint256 lastIdx = set.preMintDataArr.length - 1;
+                if (toDeleteIdx != lastIdx) {
+                    PreMintData memory lastPreMintData = set.preMintDataArr[
+                        lastIdx
+                    ];
+                    set.preMintDataArr[toDeleteIdx] = lastPreMintData;
+                    set.indexes[lastPreMintData.sender] = idx;
+                }
+                set.preMintDataArr.pop();
+                delete set.indexes[_sender];
+            } else {
+                set.preMintDataArr[idx - 1].quantity = newQuantity;
+            }
         }
     }
 
