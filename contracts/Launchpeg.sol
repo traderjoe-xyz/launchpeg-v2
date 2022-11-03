@@ -80,15 +80,6 @@ contract Launchpeg is BaseLaunchpeg, ILaunchpeg {
     /// @param auctionSaleStartTime New auction sale start time
     event AuctionSaleStartTimeSet(uint256 auctionSaleStartTime);
 
-    /// @dev Batch mint is allowed in the allowlist and public sale phases
-    modifier isBatchMintAvailable() {
-        Phase currPhase = currentPhase();
-        if (currPhase != Phase.Allowlist && currPhase != Phase.PublicSale) {
-            revert Launchpeg__WrongPhase();
-        }
-        _;
-    }
-
     /// @notice Launchpeg initialization
     /// Can only be called once
     /// @param _collectionData Launchpeg collection data
@@ -268,29 +259,6 @@ contract Launchpeg is BaseLaunchpeg, ILaunchpeg {
             Phase.DutchAuction
         );
         _refundIfOver(totalCost);
-    }
-
-    /// @notice Mint NFTs during the pre-mint
-    /// @param _quantity Quantity of NFTs to mint
-    function preMint(uint256 _quantity)
-        external
-        payable
-        override
-        whenNotPaused
-        atPhase(Phase.PreMint)
-    {
-        _preMint(_quantity);
-    }
-
-    /// @notice Batch mint NFTs requested during the pre-mint
-    /// @param _maxQuantity Max quantity of NFTs to mint
-    function batchMintPreMintedNFTs(uint256 _maxQuantity)
-        external
-        override
-        whenNotPaused
-        isBatchMintAvailable
-    {
-        _batchMintPreMintedNFTs(_maxQuantity);
     }
 
     /// @notice Returns the current price of the dutch auction

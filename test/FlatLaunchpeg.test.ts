@@ -226,10 +226,10 @@ describe('FlatLaunchpeg', () => {
       expect(await flatLaunchpeg.amountMintedDuringPreMint()).to.eq(quantity)
     })
 
-    it('Should not allow batch mint during pre-mint phase', async () => {
+    it('Should not allow user to claim pre-mint during pre-mint phase', async () => {
       const allowlistPrice = config.flatAllowlistSalePrice
       await flatLaunchpeg.connect(alice).preMint(1, { value: allowlistPrice })
-      await expect(flatLaunchpeg.connect(bob).batchMintPreMintedNFTs(1)).to.be.revertedWith('Launchpeg__WrongPhase()')
+      await expect(flatLaunchpeg.connect(alice).claimPreMint()).to.be.revertedWith('Launchpeg__WrongPhase()')
     })
 
     it('Should revert if user tries to mint for another phase', async () => {
@@ -257,8 +257,8 @@ describe('FlatLaunchpeg', () => {
       )
     })
 
-    it('Should revert if user pre-mints and allowlist mints more than collection size', async () => {
-      config.collectionSize = 5
+    it('Should revert if user pre-mints and allowlist mints more than allowlist size', async () => {
+      config.collectionSize = 10
       config.amountForDevs = 0
       config.amountForAllowlist = 5
       config.batchRevealSize = 5
@@ -287,7 +287,7 @@ describe('FlatLaunchpeg', () => {
       await expect(flatLaunchpeg.connect(bob).allowlistMint(1)).to.be.revertedWith('Launchpeg__NotEnoughAVAX(0)')
     })
 
-    it('Should allow any user to batch mint', async () => {
+    it('Should allow user to claim pre-mint', async () => {
       await initializePhasesFlatLaunchpeg(flatLaunchpeg, config, Phase.PreMint)
       await flatLaunchpeg.connect(dev).seedAllowlist([alice.address], [5])
 
@@ -296,10 +296,10 @@ describe('FlatLaunchpeg', () => {
       const preMintQty = 2
       await flatLaunchpeg.connect(alice).preMint(preMintQty, { value: allowlistPrice.mul(preMintQty) })
 
-      // Bob batch mints in allowlist phase
+      // Alice claims pre-mint in allowlist phase
       const blockTimestamp = await latest()
       await advanceTimeAndBlock(duration.seconds(config.allowlistStartTime.sub(blockTimestamp).toNumber()))
-      await flatLaunchpeg.connect(bob).batchMintPreMintedNFTs(preMintQty)
+      await flatLaunchpeg.connect(alice).claimPreMint()
       expect(await flatLaunchpeg.balanceOf(alice.address)).to.eq(preMintQty)
     })
 
@@ -375,7 +375,7 @@ describe('FlatLaunchpeg', () => {
       await expect(flatLaunchpeg.connect(alice).publicSaleMint(1)).to.be.revertedWith('Launchpeg__WrongPhase()')
     })
 
-    it('Should allow any user to batch mint', async () => {
+    it('Should allow user to claim pre-mint', async () => {
       await initializePhasesFlatLaunchpeg(flatLaunchpeg, config, Phase.PreMint)
       await flatLaunchpeg.connect(dev).seedAllowlist([alice.address], [5])
 
@@ -384,10 +384,10 @@ describe('FlatLaunchpeg', () => {
       const preMintQty = 2
       await flatLaunchpeg.connect(alice).preMint(preMintQty, { value: allowlistPrice.mul(preMintQty) })
 
-      // Bob batch mints in public sale phase
+      // Alice claims pre-mint in public sale phase
       const blockTimestamp = await latest()
       await advanceTimeAndBlock(duration.seconds(config.publicSaleStartTime.sub(blockTimestamp).toNumber()))
-      await flatLaunchpeg.connect(bob).batchMintPreMintedNFTs(preMintQty)
+      await flatLaunchpeg.connect(alice).claimPreMint()
       expect(await flatLaunchpeg.balanceOf(alice.address)).to.eq(preMintQty)
     })
 
@@ -418,7 +418,7 @@ describe('FlatLaunchpeg', () => {
       await flatLaunchpeg.connect(alice).pause()
       await expect(flatLaunchpeg.devMint(1)).to.be.revertedWith('Pausable: paused')
       await expect(flatLaunchpeg.preMint(1)).to.be.revertedWith('Pausable: paused')
-      await expect(flatLaunchpeg.batchMintPreMintedNFTs(1)).to.be.revertedWith('Pausable: paused')
+      await expect(flatLaunchpeg.claimPreMint()).to.be.revertedWith('Pausable: paused')
       await expect(flatLaunchpeg.allowlistMint(1)).to.be.revertedWith('Pausable: paused')
       await expect(flatLaunchpeg.connect(bob).publicSaleMint(1)).to.be.revertedWith('Pausable: paused')
 
