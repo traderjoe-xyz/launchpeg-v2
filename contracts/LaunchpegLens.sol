@@ -135,8 +135,8 @@ contract LaunchpegLens {
         ILaunchpegFactory _launchpegFactoryV2,
         address _batchReveal
     ) {
-        launchpegFactoryV1 = _launchpegFactoryV1;
-        launchpegFactoryV2 = _launchpegFactoryV2;
+        launchpegFactoryV1 = ILaunchpegFactory(_launchpegFactoryV1);
+        launchpegFactoryV2 = ILaunchpegFactory(_launchpegFactoryV2);
         batchReveal = _batchReveal;
     }
 
