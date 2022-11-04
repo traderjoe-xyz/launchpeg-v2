@@ -1,13 +1,12 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, Contract, ContractFactory } from 'ethers'
+import { Contract, ContractFactory } from 'ethers'
 import { config as hardhatConfig, ethers, network, upgrades } from 'hardhat'
-import { Address } from 'hardhat-deploy/types'
 import { getDefaultLaunchpegConfig, LaunchpegConfig } from './utils/helpers'
 
 // skip LaunchpegLens test suite
 describe.skip('LaunchpegLens', function () {
-  const launchpegFactoryV1Address: Address = '0x7bfd7192e76d950832c77bb412aae841049d8d9b'
+  const launchpegFactoryV1Address: string = '0x7bfd7192e76d950832c77bb412aae841049d8d9b'
 
   let launchpegCF: ContractFactory
   let flatLaunchpegCF: ContractFactory
@@ -24,6 +23,7 @@ describe.skip('LaunchpegLens', function () {
   let config: LaunchpegConfig
 
   let signers: SignerWithAddress[]
+  let alice: SignerWithAddress
   let projectOwner: SignerWithAddress
   let royaltyReceiver: SignerWithAddress
 
@@ -35,8 +35,9 @@ describe.skip('LaunchpegLens', function () {
     lensCF = await ethers.getContractFactory('LaunchpegLens')
 
     signers = await ethers.getSigners()
-    projectOwner = signers[3]
-    royaltyReceiver = signers[4]
+    alice = signers[0]
+    projectOwner = signers[1]
+    royaltyReceiver = signers[2]
 
     const rpcConfig: any = hardhatConfig.networks.avalanche
     await network.provider.request({
@@ -76,7 +77,7 @@ describe.skip('LaunchpegLens', function () {
     await setUp()
   })
 
-  const createLaunchpeg = async (enableBatchReveal = true) => {
+  const createLaunchpeg = async (enableBatchReveal: boolean) => {
     await launchpegFactory.createLaunchpeg(
       'JoePEG',
       'JOEPEG',
@@ -91,7 +92,7 @@ describe.skip('LaunchpegLens', function () {
     )
   }
 
-  const createFlatLaunchpeg = async (enableBatchReveal = true) => {
+  const createFlatLaunchpeg = async (enableBatchReveal: boolean) => {
     await launchpegFactory.createFlatLaunchpeg(
       'JoePEG',
       'JOEPEG',
@@ -105,7 +106,7 @@ describe.skip('LaunchpegLens', function () {
     )
   }
 
-  const configureBatchReveal = async (launchpegAddress: Address) => {
+  const configureBatchReveal = async (launchpegAddress: string) => {
     await batchReveal.configure(
       launchpegAddress,
       config.batchRevealSize,
@@ -115,8 +116,8 @@ describe.skip('LaunchpegLens', function () {
   }
 
   describe('LaunchpegV1 data', async () => {
-    const lpAddress: Address = '0x5C1890eBB39014975b3981febff2A43420CEf76d'
-    const flpAddress: Address = '0xC70DF87e1d98f6A531c8E324C9BCEC6FC82B5E8d'
+    const lpAddress: string = '0x5C1890eBB39014975b3981febff2A43420CEf76d'
+    const flpAddress: string = '0xC70DF87e1d98f6A531c8E324C9BCEC6FC82B5E8d'
 
     it('Should return Launchpeg type and version', async () => {
       expect(await lens.getLaunchpegType(lpAddress)).to.eql([1, 1])
@@ -136,7 +137,8 @@ describe.skip('LaunchpegLens', function () {
       expect(lensDataArr.length).to.eq(1)
       expect(lpAddresses).to.eql([lpAddress])
 
-      lensDataArr = await lens.getLaunchpegsByTypeAndVersion(flatLaunchpegType, version, numEntries, 2, user)
+      lastIdx = 2
+      lensDataArr = await lens.getLaunchpegsByTypeAndVersion(flatLaunchpegType, version, numEntries, lastIdx, user)
       let flpAddresses = lensDataArr.map((data: any) => data.id)
       expect(lensDataArr.length).to.eq(1)
       expect(flpAddresses).to.eql([flpAddress])
@@ -145,7 +147,7 @@ describe.skip('LaunchpegLens', function () {
     it('Should return Launchpeg data', async () => {
       const launchpegType = 1
       const flatLaunchpegType = 2
-      const user = ethers.constants.AddressZero
+      const user = alice.address
 
       let lensData = await lens.getLaunchpegData(lpAddress, user)
       expect(lensData.id).to.eq(lpAddress)
@@ -162,14 +164,14 @@ describe.skip('LaunchpegLens', function () {
   })
 
   describe('LaunchpegV2 data', async () => {
-    let lpWithReveal: Address
-    let lpWithoutReveal: Address
-    let flpWithReveal: Address
-    let flpWithoutReveal: Address
+    let lpWithReveal: string
+    let lpWithoutReveal: string
+    let flpWithReveal: string
+    let flpWithoutReveal: string
 
     const expectLensDataEqual = (
       lensData: any,
-      launchpegAddress: Address,
+      launchpegAddress: string,
       launchpegType: number,
       isBatchRevealEnabled: boolean
     ) => {
@@ -245,7 +247,7 @@ describe.skip('LaunchpegLens', function () {
     it('Should return Launchpeg data', async () => {
       const launchpegType = 1
       const flatLaunchpegType = 2
-      const user = ethers.constants.AddressZero
+      const user = alice.address
 
       let lensData = await lens.getLaunchpegData(lpWithReveal, user)
       expectLensDataEqual(lensData, lpWithReveal, launchpegType, true)
