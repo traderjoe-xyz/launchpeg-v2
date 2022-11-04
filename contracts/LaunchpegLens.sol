@@ -5,9 +5,10 @@ pragma solidity ^0.8.4;
 import "@openzeppelin/contracts-upgradeable/access/IAccessControlEnumerableUpgradeable.sol";
 
 import "./interfaces/IBaseLaunchpeg.sol";
+import "./interfaces/IBaseLaunchpegV1.sol";
+import "./interfaces/IBatchReveal.sol";
 import "./interfaces/IFlatLaunchpeg.sol";
 import "./interfaces/ILaunchpeg.sol";
-import "./interfaces/IBatchReveal.sol";
 import "./interfaces/ILaunchpegFactory.sol";
 import "erc721a-upgradeable/contracts/ERC721AUpgradeable.sol";
 
@@ -25,13 +26,6 @@ contract LaunchpegLens {
         uint256 totalSupply;
         string unrevealedURI;
         string baseURI;
-    }
-
-    struct ProjectOwnerData {
-        address[] projectOwners;
-        uint256 amountMintedByDevs;
-        uint256 withdrawAVAXStartTime;
-        uint256 launchpegBalanceAVAX;
     }
 
     struct LaunchpegData {
@@ -90,6 +84,13 @@ contract LaunchpegLens {
         uint256 allowanceForAllowlistMint;
     }
 
+    struct ProjectOwnerData {
+        address[] projectOwners;
+        uint256 amountMintedByDevs;
+        uint256 withdrawAVAXStartTime;
+        uint256 launchpegBalanceAVAX;
+    }
+
     /// Global struct that is returned by getAllLaunchpegs()
     struct LensData {
         address id;
@@ -106,6 +107,12 @@ contract LaunchpegLens {
         Unknown,
         Launchpeg,
         FlatLaunchpeg
+    }
+
+    enum LaunchpegVersion {
+        Unknown,
+        V1,
+        V2
     }
 
     /// @notice LaunchpegFactory V1 address
@@ -131,56 +138,62 @@ contract LaunchpegLens {
         batchReveal = _batchReveal;
     }
 
-    /// @notice Gets the type of Launchpeg
+    /// @notice Gets the type and version of Launchpeg
     /// @param _contract Contract address to consider
     /// @return LaunchpegType Type of Launchpeg implementation (Dutch Auction / Flat / Unknown)
     function getLaunchpegType(address _contract)
         public
         view
-        returns (LaunchpegType)
+        returns (LaunchpegType, LaunchpegVersion)
     {
-        if (
-            ILaunchpegFactory(launchpegFactoryV1).isLaunchpeg(0, _contract) ||
+        if (ILaunchpegFactory(launchpegFactoryV1).isLaunchpeg(0, _contract)) {
+            return (LaunchpegType.Launchpeg, LaunchpegVersion.V1);
+        } else if (
             ILaunchpegFactory(launchpegFactoryV2).isLaunchpeg(0, _contract)
         ) {
-            return LaunchpegType.Launchpeg;
+            return (LaunchpegType.Launchpeg, LaunchpegVersion.V2);
         } else if (
-            ILaunchpegFactory(launchpegFactoryV1).isLaunchpeg(1, _contract) ||
+            ILaunchpegFactory(launchpegFactoryV1).isLaunchpeg(1, _contract)
+        ) {
+            return (LaunchpegType.FlatLaunchpeg, LaunchpegVersion.V1);
+        } else if (
             ILaunchpegFactory(launchpegFactoryV2).isLaunchpeg(1, _contract)
         ) {
-            return LaunchpegType.FlatLaunchpeg;
+            return (LaunchpegType.FlatLaunchpeg, LaunchpegVersion.V2);
         } else {
-            return LaunchpegType.Unknown;
+            return (LaunchpegType.Unknown, LaunchpegVersion.Unknown);
         }
     }
 
-    /// @notice Fetch Launchpeg data
-    /// @param _type Type of Launchpeg to consider
+    /// @notice Fetch Launchpeg data by type and version
+    /// @param _type Type of Launchpeg to consider (0 - Launchpeg, 1 - FlatLaunchpeg)
+    /// @param _version Launchpeg version (1 or 2)
     /// @param _number Number of Launchpeg to fetch
     /// @param _limit Last Launchpeg index to fetch
     /// @param _user Address to consider for NFT balances and allowlist allocations
     /// @return LensDataList List of contracts datas, in descending order
-    function getAllLaunchpegsFromType(
+    function getLaunchpegsByTypeAndVersion(
         uint8 _type,
+        uint8 _version,
         uint256 _number,
         uint256 _limit,
         address _user
     ) external view returns (LensData[] memory) {
-        LensData[] memory LensDatas;
-        uint256 numLaunchpegs = ILaunchpegFactory(launchpegFactoryV1)
-            .numLaunchpegs(_type);
+        // default to v2 unless v1 is specified
+        ILaunchpegFactory factory = (_version == 1)
+            ? ILaunchpegFactory(launchpegFactoryV1)
+            : ILaunchpegFactory(launchpegFactoryV2);
+        uint256 numLaunchpegs = factory.numLaunchpegs(_type);
 
         uint256 end = _limit > numLaunchpegs ? numLaunchpegs : _limit;
         uint256 start = _number > end ? 0 : end - _number;
 
+        LensData[] memory LensDatas;
         LensDatas = new LensData[](end - start);
 
         for (uint256 i = 0; i < LensDatas.length; i++) {
             LensDatas[i] = getLaunchpegData(
-                ILaunchpegFactory(launchpegFactoryV1).allLaunchpegs(
-                    _type,
-                    end - 1 - i
-                ),
+                factory.allLaunchpegs(_type, end - 1 - i),
                 _user
             );
         }
@@ -197,153 +210,71 @@ contract LaunchpegLens {
         view
         returns (LensData memory)
     {
-        LensData memory data;
-        data.id = _launchpeg;
-        data.launchType = getLaunchpegType(_launchpeg);
-
-        if (data.launchType == LaunchpegType.Unknown) {
+        (
+            LaunchpegType launchType,
+            LaunchpegVersion launchVersion
+        ) = getLaunchpegType(_launchpeg);
+        if (launchType == LaunchpegType.Unknown) {
             revert LaunchpegLens__InvalidContract();
         }
 
-        data.collectionData.name = ERC721AUpgradeable(_launchpeg).name();
-        data.collectionData.symbol = ERC721AUpgradeable(_launchpeg).symbol();
-        data.collectionData.collectionSize = IBaseLaunchpeg(_launchpeg)
-            .collectionSize();
-        data.collectionData.maxPerAddressDuringMint = IBaseLaunchpeg(_launchpeg)
-            .maxPerAddressDuringMint();
-        data.collectionData.totalSupply = ERC721AUpgradeable(_launchpeg)
-            .totalSupply();
-        data.collectionData.unrevealedURI = IBaseLaunchpeg(_launchpeg)
-            .unrevealedURI();
-        data.collectionData.baseURI = IBaseLaunchpeg(_launchpeg).baseURI();
-
-        data.projectOwnerData.projectOwners = getProjectOwners(_launchpeg);
-        data.projectOwnerData.withdrawAVAXStartTime = IBaseLaunchpeg(_launchpeg)
-            .withdrawAVAXStartTime();
-        data.projectOwnerData.launchpegBalanceAVAX = _launchpeg.balance;
-        data.projectOwnerData.amountMintedByDevs = IBaseLaunchpeg(_launchpeg)
-            .amountMintedByDevs();
-
-        (
-            ,
-            ,
-            uint256 revealBatchSize,
-            uint256 revealStartTime,
-            uint256 revealInterval
-        ) = IBatchReveal(batchReveal).launchpegToConfig(_launchpeg);
-        data.revealData.revealBatchSize = revealBatchSize;
-        data.revealData.revealStartTime = revealStartTime;
-        data.revealData.revealInterval = revealInterval;
-        data.revealData.lastTokenRevealed = IBatchReveal(batchReveal)
-            .launchpegToLastTokenReveal(_launchpeg);
+        LensData memory data;
+        data.id = _launchpeg;
+        data.launchType = launchType;
+        data.collectionData = _getCollectionData(_launchpeg);
+        data.projectOwnerData = _getProjectOwnerData(_launchpeg, launchVersion);
+        data.revealData = _getBatchRevealData(_launchpeg, launchVersion);
+        data.userData = _getUserData(_launchpeg, launchVersion, _user);
 
         if (data.launchType == LaunchpegType.Launchpeg) {
-            data.launchpegData.amountForAuction = ILaunchpeg(_launchpeg)
-                .amountForAuction();
-            data.launchpegData.amountForAllowlist = ILaunchpeg(_launchpeg)
-                .amountForAllowlist();
-            data.launchpegData.amountForDevs = ILaunchpeg(_launchpeg)
-                .amountForDevs();
-            data.launchpegData.auctionSaleStartTime = ILaunchpeg(_launchpeg)
-                .auctionSaleStartTime();
-            data.launchpegData.preMintStartTime = ILaunchpeg(_launchpeg)
-                .preMintStartTime();
-            data.launchpegData.allowlistStartTime = ILaunchpeg(_launchpeg)
-                .allowlistStartTime();
-            data.launchpegData.publicSaleStartTime = ILaunchpeg(_launchpeg)
-                .publicSaleStartTime();
-            data.launchpegData.publicSaleEndTime = ILaunchpeg(_launchpeg)
-                .publicSaleEndTime();
-            data.launchpegData.auctionStartPrice = ILaunchpeg(_launchpeg)
-                .auctionStartPrice();
-            data.launchpegData.auctionEndPrice = ILaunchpeg(_launchpeg)
-                .auctionEndPrice();
-            data.launchpegData.auctionSaleDuration = ILaunchpeg(_launchpeg)
-                .auctionSaleDuration();
-            data.launchpegData.auctionDropInterval = ILaunchpeg(_launchpeg)
-                .auctionDropInterval();
-            data.launchpegData.auctionDropPerStep = ILaunchpeg(_launchpeg)
-                .auctionDropPerStep();
-            data.launchpegData.allowlistDiscountPercent = ILaunchpeg(_launchpeg)
-                .allowlistDiscountPercent();
-            data.launchpegData.publicSaleDiscountPercent = ILaunchpeg(
-                _launchpeg
-            ).publicSaleDiscountPercent();
-            data.launchpegData.currentPhase = ILaunchpeg(_launchpeg)
-                .currentPhase();
-            data.launchpegData.auctionPrice = ILaunchpeg(_launchpeg)
-                .getAuctionPrice(data.launchpegData.auctionSaleStartTime);
-            data.launchpegData.allowlistPrice = ILaunchpeg(_launchpeg)
-                .allowlistPrice();
-            data.launchpegData.publicSalePrice = ILaunchpeg(_launchpeg)
-                .salePrice();
-            data.launchpegData.amountMintedDuringAuction = ILaunchpeg(
-                _launchpeg
-            ).amountMintedDuringAuction();
-            data.launchpegData.lastAuctionPrice = ILaunchpeg(_launchpeg)
-                .lastAuctionPrice();
-            data.launchpegData.amountMintedDuringPreMint = IFlatLaunchpeg(
-                _launchpeg
-            ).amountMintedDuringPreMint();
-            data.launchpegData.amountMintedDuringAllowlist = IBaseLaunchpeg(
-                _launchpeg
-            ).amountMintedDuringAllowlist();
-            data.launchpegData.amountMintedDuringPublicSale = IBaseLaunchpeg(
-                _launchpeg
-            ).amountMintedDuringPublicSale();
-        }
-
-        if (data.launchType == LaunchpegType.FlatLaunchpeg) {
-            data.flatLaunchpegData.currentPhase = IFlatLaunchpeg(_launchpeg)
-                .currentPhase();
-            data.flatLaunchpegData.allowlistPrice = IFlatLaunchpeg(_launchpeg)
-                .allowlistPrice();
-            data.flatLaunchpegData.salePrice = IFlatLaunchpeg(_launchpeg)
-                .salePrice();
-            data.flatLaunchpegData.amountMintedDuringPreMint = IFlatLaunchpeg(
-                _launchpeg
-            ).amountMintedDuringPreMint();
-            data.flatLaunchpegData.amountMintedDuringAllowlist = IFlatLaunchpeg(
-                _launchpeg
-            ).amountMintedDuringAllowlist();
-            data
-                .flatLaunchpegData
-                .amountMintedDuringPublicSale = IFlatLaunchpeg(_launchpeg)
-                .amountMintedDuringPublicSale();
-            data.flatLaunchpegData.amountForAllowlist = IFlatLaunchpeg(
-                _launchpeg
-            ).amountForAllowlist();
-            data.flatLaunchpegData.amountForDevs = IFlatLaunchpeg(_launchpeg)
-                .amountForDevs();
-            data.flatLaunchpegData.preMintStartTime = IFlatLaunchpeg(_launchpeg)
-                .preMintStartTime();
-            data.flatLaunchpegData.allowlistStartTime = IFlatLaunchpeg(
-                _launchpeg
-            ).allowlistStartTime();
-            data.flatLaunchpegData.publicSaleStartTime = IFlatLaunchpeg(
-                _launchpeg
-            ).publicSaleStartTime();
-            data.flatLaunchpegData.publicSaleEndTime = IFlatLaunchpeg(
-                _launchpeg
-            ).publicSaleEndTime();
-        }
-
-        if (_user != address(0)) {
-            data.userData.balanceOf = ERC721AUpgradeable(_launchpeg).balanceOf(
-                _user
+            data.launchpegData = _getLaunchpegData(_launchpeg, launchVersion);
+        } else if (data.launchType == LaunchpegType.FlatLaunchpeg) {
+            data.flatLaunchpegData = _getFlatLaunchpegData(
+                _launchpeg,
+                launchVersion
             );
-            data.userData.numberMinted = IBaseLaunchpeg(_launchpeg)
-                .numberMinted(_user);
-            data.userData.numberMintedWithPreMint = IBaseLaunchpeg(_launchpeg)
-                .numberMintedWithPreMint(_user);
-            data.userData.allowanceForAllowlistMint = IBaseLaunchpeg(_launchpeg)
-                .allowlist(_user);
         }
 
         return data;
     }
 
-    function getProjectOwners(address _launchpeg)
+    /// @dev Fetches Launchpeg collection data
+    /// @param _launchpeg Launchpeg address
+    function _getCollectionData(address _launchpeg)
+        private
+        view
+        returns (CollectionData memory data)
+    {
+        data.name = ERC721AUpgradeable(_launchpeg).name();
+        data.symbol = ERC721AUpgradeable(_launchpeg).symbol();
+        data.collectionSize = IBaseLaunchpeg(_launchpeg).collectionSize();
+        data.maxPerAddressDuringMint = IBaseLaunchpeg(_launchpeg)
+            .maxPerAddressDuringMint();
+        data.totalSupply = ERC721AUpgradeable(_launchpeg).totalSupply();
+        data.unrevealedURI = IBaseLaunchpeg(_launchpeg).unrevealedURI();
+        data.baseURI = IBaseLaunchpeg(_launchpeg).baseURI();
+    }
+
+    /// @dev Fetches Launchpeg project owner data
+    /// @param _launchpeg Launchpeg address
+    /// @param launchVersion Launchpeg version
+    function _getProjectOwnerData(
+        address _launchpeg,
+        LaunchpegVersion launchVersion
+    ) private view returns (ProjectOwnerData memory data) {
+        data.amountMintedByDevs = IBaseLaunchpeg(_launchpeg)
+            .amountMintedByDevs();
+        if (launchVersion == LaunchpegVersion.V2) {
+            data.projectOwners = _getProjectOwners(_launchpeg);
+            data.withdrawAVAXStartTime = IBaseLaunchpeg(_launchpeg)
+                .withdrawAVAXStartTime();
+            data.launchpegBalanceAVAX = _launchpeg.balance;
+        }
+    }
+
+    /// @dev Fetches Launchpeg project owners. Only works for Launchpeg V2.
+    /// @param _launchpeg Launchpeg address
+    function _getProjectOwners(address _launchpeg)
         private
         view
         returns (address[] memory)
@@ -357,5 +288,119 @@ contract LaunchpegLens {
                 .getRoleMember(role, i);
         }
         return projectOwners;
+    }
+
+    /// @dev Fetches Launchpeg data
+    /// @param _launchpeg Launchpeg address
+    /// @param launchVersion Launchpeg version
+    function _getLaunchpegData(
+        address _launchpeg,
+        LaunchpegVersion launchVersion
+    ) private view returns (LaunchpegData memory data) {
+        ILaunchpeg lp = ILaunchpeg(_launchpeg);
+        data.currentPhase = lp.currentPhase();
+        data.amountForAuction = lp.amountForAuction();
+        data.amountForAllowlist = lp.amountForAllowlist();
+        data.amountForDevs = lp.amountForDevs();
+        data.auctionSaleStartTime = lp.auctionSaleStartTime();
+        data.allowlistStartTime = lp.allowlistStartTime();
+        data.publicSaleStartTime = lp.publicSaleStartTime();
+        data.auctionStartPrice = lp.auctionStartPrice();
+        data.auctionEndPrice = lp.auctionEndPrice();
+        data.auctionSaleDuration = lp.auctionSaleDuration();
+        data.auctionDropInterval = lp.auctionDropInterval();
+        data.auctionDropPerStep = lp.auctionDropPerStep();
+        data.allowlistDiscountPercent = lp.allowlistDiscountPercent();
+        data.publicSaleDiscountPercent = lp.publicSaleDiscountPercent();
+        data.auctionPrice = lp.getAuctionPrice(data.auctionSaleStartTime);
+        data.lastAuctionPrice = lp.lastAuctionPrice();
+        data.amountMintedDuringAuction = lp.amountMintedDuringAuction();
+        data.amountMintedDuringAllowlist = lp.amountMintedDuringAllowlist();
+        data.amountMintedDuringPublicSale = lp.amountMintedDuringPublicSale();
+        if (launchVersion == LaunchpegVersion.V1) {
+            data.allowlistPrice = IBaseLaunchpegV1(_launchpeg)
+                .getAllowlistPrice();
+            data.publicSalePrice = IBaseLaunchpegV1(_launchpeg)
+                .getPublicSalePrice();
+        } else if (launchVersion == LaunchpegVersion.V2) {
+            data.allowlistPrice = lp.allowlistPrice();
+            data.publicSalePrice = lp.salePrice();
+            data.preMintStartTime = lp.preMintStartTime();
+            data.publicSaleEndTime = lp.publicSaleEndTime();
+            data.amountMintedDuringPreMint = lp.amountMintedDuringPreMint();
+        }
+    }
+
+    /// @dev Fetches FlatLaunchpeg data
+    /// @param _launchpeg Launchpeg address
+    /// @param launchVersion Launchpeg version
+    function _getFlatLaunchpegData(
+        address _launchpeg,
+        LaunchpegVersion launchVersion
+    ) private view returns (FlatLaunchpegData memory data) {
+        IFlatLaunchpeg lp = IFlatLaunchpeg(_launchpeg);
+        data.currentPhase = lp.currentPhase();
+        data.amountForAllowlist = lp.amountForAllowlist();
+        data.amountForDevs = lp.amountForDevs();
+        data.allowlistStartTime = lp.allowlistStartTime();
+        data.publicSaleStartTime = lp.publicSaleStartTime();
+        data.allowlistPrice = lp.allowlistPrice();
+        data.salePrice = lp.salePrice();
+        data.amountMintedDuringAllowlist = lp.amountMintedDuringAllowlist();
+        data.amountMintedDuringPublicSale = lp.amountMintedDuringPublicSale();
+        if (launchVersion == LaunchpegVersion.V2) {
+            data.preMintStartTime = lp.preMintStartTime();
+            data.publicSaleEndTime = lp.publicSaleEndTime();
+            data.amountMintedDuringPreMint = lp.amountMintedDuringPreMint();
+        }
+    }
+
+    /// @dev Fetches batch reveal data
+    /// @param _launchpeg Launchpeg address
+    /// @param launchVersion Launchpeg version
+    function _getBatchRevealData(
+        address _launchpeg,
+        LaunchpegVersion launchVersion
+    ) private view returns (RevealData memory data) {
+        if (launchVersion == LaunchpegVersion.V1) {
+            IBaseLaunchpegV1 br = IBaseLaunchpegV1(_launchpeg);
+            data.revealBatchSize = br.revealBatchSize();
+            data.revealStartTime = br.revealStartTime();
+            data.revealInterval = br.revealInterval();
+            data.lastTokenRevealed = br.lastTokenRevealed();
+        } else if (launchVersion == LaunchpegVersion.V2) {
+            (
+                ,
+                ,
+                uint256 revealBatchSize,
+                uint256 revealStartTime,
+                uint256 revealInterval
+            ) = IBatchReveal(batchReveal).launchpegToConfig(_launchpeg);
+            data.revealBatchSize = revealBatchSize;
+            data.revealStartTime = revealStartTime;
+            data.revealInterval = revealInterval;
+            data.lastTokenRevealed = IBatchReveal(batchReveal)
+                .launchpegToLastTokenReveal(_launchpeg);
+        }
+    }
+
+    /// @dev Fetches Launchpeg user data
+    /// @param _launchpeg Launchpeg address
+    /// @param launchVersion Launchpeg version
+    function _getUserData(
+        address _launchpeg,
+        LaunchpegVersion launchVersion,
+        address _user
+    ) private view returns (UserData memory data) {
+        if (_user != address(0)) {
+            data.balanceOf = ERC721AUpgradeable(_launchpeg).balanceOf(_user);
+            data.numberMinted = IBaseLaunchpeg(_launchpeg).numberMinted(_user);
+            data.allowanceForAllowlistMint = IBaseLaunchpeg(_launchpeg)
+                .allowlist(_user);
+            if (launchVersion == LaunchpegVersion.V2) {
+                data.numberMintedWithPreMint = IBaseLaunchpeg(_launchpeg)
+                    .numberMintedWithPreMint(_user);
+            }
+        }
     }
 }
