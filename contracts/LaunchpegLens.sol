@@ -115,26 +115,26 @@ contract LaunchpegLens {
         V2
     }
 
-    /// @notice LaunchpegFactory V1 address
-    address public immutable launchpegFactoryV1;
+    /// @notice LaunchpegFactory V1
+    ILaunchpegFactory public immutable launchpegFactoryV1;
 
-    /// @notice LaunchpegFactory V2 address
-    address public immutable launchpegFactoryV2;
+    /// @notice LaunchpegFactory V2
+    ILaunchpegFactory public immutable launchpegFactoryV2;
 
     /// @notice BatchReveal address
     address public immutable batchReveal;
 
     /// @dev LaunchpegLens constructor
-    /// @param _launchpegFactoryV1 LaunchpegFactory address V1
-    /// @param _launchpegFactoryV2 LaunchpegFactory address V2
+    /// @param _launchpegFactoryV1 LaunchpegFactory V1 address
+    /// @param _launchpegFactoryV2 LaunchpegFactory V2 address
     /// @param _batchReveal BatchReveal address
     constructor(
         address _launchpegFactoryV1,
         address _launchpegFactoryV2,
         address _batchReveal
     ) {
-        launchpegFactoryV1 = _launchpegFactoryV1;
-        launchpegFactoryV2 = _launchpegFactoryV2;
+        launchpegFactoryV1 = ILaunchpegFactory(_launchpegFactoryV1);
+        launchpegFactoryV2 = ILaunchpegFactory(_launchpegFactoryV2);
         batchReveal = _batchReveal;
     }
 
@@ -146,19 +146,13 @@ contract LaunchpegLens {
         view
         returns (LaunchpegType, LaunchpegVersion)
     {
-        if (ILaunchpegFactory(launchpegFactoryV1).isLaunchpeg(0, _contract)) {
+        if (launchpegFactoryV1.isLaunchpeg(0, _contract)) {
             return (LaunchpegType.Launchpeg, LaunchpegVersion.V1);
-        } else if (
-            ILaunchpegFactory(launchpegFactoryV2).isLaunchpeg(0, _contract)
-        ) {
+        } else if (launchpegFactoryV2.isLaunchpeg(0, _contract)) {
             return (LaunchpegType.Launchpeg, LaunchpegVersion.V2);
-        } else if (
-            ILaunchpegFactory(launchpegFactoryV1).isLaunchpeg(1, _contract)
-        ) {
+        } else if (launchpegFactoryV1.isLaunchpeg(1, _contract)) {
             return (LaunchpegType.FlatLaunchpeg, LaunchpegVersion.V1);
-        } else if (
-            ILaunchpegFactory(launchpegFactoryV2).isLaunchpeg(1, _contract)
-        ) {
+        } else if (launchpegFactoryV2.isLaunchpeg(1, _contract)) {
             return (LaunchpegType.FlatLaunchpeg, LaunchpegVersion.V2);
         } else {
             return (LaunchpegType.Unknown, LaunchpegVersion.Unknown);
@@ -181,8 +175,8 @@ contract LaunchpegLens {
     ) external view returns (LensData[] memory) {
         // default to v2 unless v1 is specified
         ILaunchpegFactory factory = (_version == 1)
-            ? ILaunchpegFactory(launchpegFactoryV1)
-            : ILaunchpegFactory(launchpegFactoryV2);
+            ? launchpegFactoryV1
+            : launchpegFactoryV2;
         uint256 numLaunchpegs = factory.numLaunchpegs(_type);
 
         uint256 end = _limit > numLaunchpegs ? numLaunchpegs : _limit;
