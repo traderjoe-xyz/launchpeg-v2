@@ -601,7 +601,7 @@ abstract contract BaseLaunchpeg is
         uint256 price = _getAllowlistPrice();
         uint256 totalCost = price * _quantity;
 
-        _mint(msg.sender, _quantity, "", false);
+        _batchMint(msg.sender, _quantity, maxPerAddressDuringMint);
         amountMintedDuringAllowlist += _quantity;
         emit Mint(
             msg.sender,
