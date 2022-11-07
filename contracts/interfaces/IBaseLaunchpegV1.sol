@@ -5,6 +5,9 @@ pragma solidity ^0.8.4;
 /// @author Trader Joe
 /// @notice Defines the legacy methods in Launchpeg V1 contracts
 interface IBaseLaunchpegV1 {
+    /** IBaseLaunchpeg */
+    function projectOwner() external view returns (address);
+
     /** ILaunchpeg */
     function getAllowlistPrice() external view returns (uint256);
 

@@ -258,11 +258,15 @@ contract LaunchpegLens {
     ) private view returns (ProjectOwnerData memory data) {
         data.amountMintedByDevs = IBaseLaunchpeg(_launchpeg)
             .amountMintedByDevs();
-        if (launchVersion == LaunchpegVersion.V2) {
+        data.launchpegBalanceAVAX = _launchpeg.balance;
+        if (launchVersion == LaunchpegVersion.V1) {
+            address[] memory projectOwners = new address[](1);
+            projectOwners[0] = IBaseLaunchpegV1(_launchpeg).projectOwner();
+            data.projectOwners = projectOwners;
+        } else if (launchVersion == LaunchpegVersion.V2) {
             data.projectOwners = _getProjectOwners(_launchpeg);
             data.withdrawAVAXStartTime = IBaseLaunchpeg(_launchpeg)
                 .withdrawAVAXStartTime();
-            data.launchpegBalanceAVAX = _launchpeg.balance;
         }
     }
 
