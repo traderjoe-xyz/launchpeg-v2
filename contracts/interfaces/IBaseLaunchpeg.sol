@@ -22,7 +22,7 @@ interface IBaseLaunchpeg is IERC721Upgradeable, IERC721MetadataUpgradeable {
     /// @notice Collection data to initialize Launchpeg
     /// @param name ERC721 name
     /// @param symbol ERC721 symbol
-    /// @param maxPerAddressDuringMint Max amount of NFTs an address can mint
+    /// @param maxPerAddressDuringMint Max amount of NFTs an address can mint in public phases
     /// @param collectionSize The collection size (e.g 10000)
     /// @param amountForDevs Amount of NFTs reserved for `projectOwner` (e.g 200)
     /// @param amountForAuction Amount of NFTs available for the auction (e.g 8000)

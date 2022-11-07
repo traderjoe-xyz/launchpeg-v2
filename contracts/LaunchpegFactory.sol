@@ -135,7 +135,7 @@ contract LaunchpegFactory is
     /// @param _symbol ERC721 symbol
     /// @param _projectOwner The project owner
     /// @param _royaltyReceiver Royalty fee collector
-    /// @param _maxPerAddressDuringMint Max amount of NFTs an address can mint
+    /// @param _maxPerAddressDuringMint Max amount of NFTs an address can mint in public phases
     /// @param _collectionSize The collection size (e.g 10000)
     /// @param _amountForAuction Amount of NFTs available for the auction (e.g 8000)
     /// @param _amountForAllowlist Amount of NFTs available for the allowlist mint (e.g 1000)
@@ -203,7 +203,7 @@ contract LaunchpegFactory is
     /// @param _symbol ERC721 symbol
     /// @param _projectOwner The project owner
     /// @param _royaltyReceiver Royalty fee collector
-    /// @param _maxPerAddressDuringMint Max amount of NFTs an address can mint
+    /// @param _maxPerAddressDuringMint Max amount of NFTs an address can mint in public phases
     /// @param _collectionSize The collection size (e.g 10000)
     /// @param _amountForDevs Amount of NFTs reserved for `projectOwner` (e.g 200)
     /// @param _amountForAllowlist Amount of NFTs available for the allowlist mint (e.g 1000)

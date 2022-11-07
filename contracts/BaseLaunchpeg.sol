@@ -59,7 +59,7 @@ abstract contract BaseLaunchpeg is
     /// @notice Amount of NFTs available for the allowlist mint (e.g 1000)
     uint256 public override amountForAllowlist;
 
-    /// @notice Max amount of NFTs an address can mint
+    /// @notice Max amount of NFTs an address can mint in public phases
     uint256 public override maxPerAddressDuringMint;
 
     /// @notice The fees collected by Joepegs on the sale benefits
@@ -495,12 +495,6 @@ abstract contract BaseLaunchpeg is
         if (_quantity > allowlist[msg.sender]) {
             revert Launchpeg__NotEligibleForAllowlistMint();
         }
-        if (
-            numberMintedWithPreMint(msg.sender) + _quantity >
-            maxPerAddressDuringMint
-        ) {
-            revert Launchpeg__CanNotMintThisMany();
-        }
         if (amountMintedDuringPreMint + _quantity > amountForAllowlist) {
             revert Launchpeg__MaxSupplyReached();
         }
@@ -596,12 +590,6 @@ abstract contract BaseLaunchpeg is
             revert Launchpeg__NotEligibleForAllowlistMint();
         }
         if (
-            numberMintedWithPreMint(msg.sender) + _quantity >
-            maxPerAddressDuringMint
-        ) {
-            revert Launchpeg__CanNotMintThisMany();
-        }
-        if (
             amountMintedDuringPreMint +
                 amountMintedDuringAllowlist +
                 _quantity >
@@ -613,7 +601,7 @@ abstract contract BaseLaunchpeg is
         uint256 price = _getAllowlistPrice();
         uint256 totalCost = price * _quantity;
 
-        _mint(msg.sender, _quantity, "", false);
+        _batchMint(msg.sender, _quantity, maxPerAddressDuringMint);
         amountMintedDuringAllowlist += _quantity;
         emit Mint(
             msg.sender,
