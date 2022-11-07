@@ -14,20 +14,23 @@ const convertTimestampIfNeeded = (launchConfig: any) => {
     if (launchConfig.auctionSaleStartTime === 'Soon') {
       launchConfig.auctionSaleStartTime = Math.floor(Date.now() / 1000) + 120
     }
-    if (launchConfig.allowlistStartTime === 'Soon') {
-      launchConfig.allowlistStartTime = launchConfig.auctionSaleStartTime + launchConfig.auctionDropInterval * 5
-    }
-    if (launchConfig.publicSaleStartTime === 'Soon') {
-      launchConfig.publicSaleStartTime = launchConfig.allowlistStartTime + 120
+    if (launchConfig.preMintStartTime === 'Soon') {
+      launchConfig.preMintStartTime = launchConfig.auctionSaleStartTime + launchConfig.auctionDropInterval * 5
     }
   } else {
     // FlatLaunchpeg
-    if (launchConfig.allowlistStartTime === 'Soon') {
-      launchConfig.allowlistStartTime = Math.floor(Date.now() / 1000) + 120
+    if (launchConfig.preMintStartTime === 'Soon') {
+      launchConfig.preMintStartTime = Math.floor(Date.now() / 1000) + 120
     }
-    if (launchConfig.publicSaleStartTime === 'Soon') {
-      launchConfig.publicSaleStartTime = launchConfig.allowlistStartTime + 120
-    }
+  }
+  if (launchConfig.allowlistStartTime === 'Soon') {
+    launchConfig.allowlistStartTime = launchConfig.preMintStartTime + 120
+  }
+  if (launchConfig.publicSaleStartTime === 'Soon') {
+    launchConfig.publicSaleStartTime = launchConfig.allowlistStartTime + 120
+  }
+  if (launchConfig.publicSaleEndTime === 'Soon') {
+    launchConfig.publicSaleEndTime = launchConfig.publicSaleStartTime + 120
   }
 
   return launchConfig

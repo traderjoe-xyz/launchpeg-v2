@@ -21,11 +21,11 @@ task('deploy-flatlaunchpeg', 'Deploy FlatLaunchpeg contract')
       launchConfig.symbol,
       launchConfig.projectOwner,
       launchConfig.royaltyReceiver,
-      launchConfig.maxBatchSize,
+      launchConfig.maxPerAddressDuringMint,
       launchConfig.collectionSize,
       launchConfig.amountForDevs,
       launchConfig.amountForAllowlist,
-      [launchConfig.batchRevealSize, launchConfig.batchRevealStart, launchConfig.batchRevealInterval]
+      launchConfig.enableBatchReveal
     )
 
     await creationTx.wait()
@@ -40,8 +40,10 @@ task('deploy-flatlaunchpeg', 'Deploy FlatLaunchpeg contract')
     const launchpeg = await ethers.getContractAt('FlatLaunchpeg', launchpegAddress)
 
     const initTx = await launchpeg.initializePhases(
+      launchConfig.preMintStartTime,
       launchConfig.allowlistStartTime,
       launchConfig.publicSaleStartTime,
+      launchConfig.publicSaleEndTime,
       launchConfig.allowlistPrice,
       launchConfig.salePrice
     )
@@ -65,12 +67,12 @@ task('deploy-flatlaunchpeg', 'Deploy FlatLaunchpeg contract')
       })
     }
 
-    if (launchConfig.keyHash && launchConfig.subscriptionId && launchConfig.maxGasLimit) {
-      await hre.run('set-VRF', {
-        contractAddress: launchpeg.address,
-        keyHash: launchConfig.keyHash,
-        subscriptionId: launchConfig.subscriptionId,
-        maxGasLimit: launchConfig.maxGasLimit,
+    if (launchConfig.enableBatchReveal) {
+      await hre.run('configure-batch-reveal', {
+        baseLaunchpeg: launchpegAddress,
+        revealBatchSize: launchConfig.revealBatchSize,
+        revealStartTime: launchConfig.revealStartTime,
+        revealInterval: launchConfig.revealInterval,
       })
     }
   })

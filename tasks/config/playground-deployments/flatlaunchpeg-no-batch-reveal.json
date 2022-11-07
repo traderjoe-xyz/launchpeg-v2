@@ -1,5 +1,5 @@
 {
-  "name": "Forever Allowlist mint FlatLaunchpeg",
+  "name": "Batch reveal disabled",
   "symbol": "FJPG",
   "projectOwner": "0x1119fbb02f38764cd90f2d9fb35fedcd8378ac2a",
   "royaltyReceiver": "0x1119fbb02f38764cd90f2d9fb35fedcd8378ac2a",
@@ -7,14 +7,11 @@
   "collectionSize": "40",
   "amountForDevs": "10",
   "amountForAllowlist": "10",
-  "enableBatchReveal": true,
-  "revealBatchSize": "40",
-  "revealStartTime": "0",
-  "revealInterval": "0",
+  "enableBatchReveal": false,
   "allowlistPrice": "500000000000000000",
   "salePrice": "1000000000000000000",
   "preMintStartTime": "Soon",
   "allowlistStartTime": "Soon",
-  "publicSaleStartTime": "1723903200",
-  "publicSaleEndTime": "1723904200"
+  "publicSaleStartTime": "Soon",
+  "publicSaleEndTime": "Soon"
 }
