@@ -6,6 +6,9 @@ import { getDefaultLaunchpegConfig, LaunchpegConfig } from './utils/helpers'
 
 // skip LaunchpegLens test suite
 describe.skip('LaunchpegLens', function () {
+  const LAUNCHPEG_TYPE = 1
+  const FLAT_LAUNCHPEG_TYPE = 2
+
   const launchpegFactoryV1Address: string = '0x7bfd7192e76d950832c77bb412aae841049d8d9b'
 
   let launchpegCF: ContractFactory
@@ -125,20 +128,18 @@ describe.skip('LaunchpegLens', function () {
     })
 
     it('Should return all Launchpegs by type and version', async () => {
-      const launchpegType = 0
-      const flatLaunchpegType = 1
       const version = 1
       const numEntries = 1
       const user = ethers.constants.AddressZero
 
       let lastIdx = 1
-      let lensDataArr = await lens.getLaunchpegsByTypeAndVersion(launchpegType, version, numEntries, lastIdx, user)
+      let lensDataArr = await lens.getLaunchpegsByTypeAndVersion(LAUNCHPEG_TYPE, version, numEntries, lastIdx, user)
       let lpAddresses = lensDataArr.map((data: any) => data.id)
       expect(lensDataArr.length).to.eq(1)
       expect(lpAddresses).to.eql([lpAddress])
 
       lastIdx = 2
-      lensDataArr = await lens.getLaunchpegsByTypeAndVersion(flatLaunchpegType, version, numEntries, lastIdx, user)
+      lensDataArr = await lens.getLaunchpegsByTypeAndVersion(FLAT_LAUNCHPEG_TYPE, version, numEntries, lastIdx, user)
       let flpAddresses = lensDataArr.map((data: any) => data.id)
       expect(lensDataArr.length).to.eq(1)
       expect(flpAddresses).to.eql([flpAddress])
@@ -226,40 +227,36 @@ describe.skip('LaunchpegLens', function () {
     })
 
     it('Should return all Launchpegs by type and version', async () => {
-      const launchpegType = 0
-      const flatLaunchpegType = 1
       const version = 2
       const numEntries = 4
       const lastIdx = 4
       const user = ethers.constants.AddressZero
 
-      let lensDataArr = await lens.getLaunchpegsByTypeAndVersion(launchpegType, version, numEntries, lastIdx, user)
+      let lensDataArr = await lens.getLaunchpegsByTypeAndVersion(LAUNCHPEG_TYPE, version, numEntries, lastIdx, user)
       let lpAddresses = lensDataArr.map((data: any) => data.id)
       expect(lensDataArr.length).to.eq(2)
       expect(lpAddresses).to.eql([lpWithoutReveal, lpWithReveal])
 
-      lensDataArr = await lens.getLaunchpegsByTypeAndVersion(flatLaunchpegType, version, numEntries, lastIdx, user)
+      lensDataArr = await lens.getLaunchpegsByTypeAndVersion(FLAT_LAUNCHPEG_TYPE, version, numEntries, lastIdx, user)
       let flpAddresses = lensDataArr.map((data: any) => data.id)
       expect(lensDataArr.length).to.eq(2)
       expect(flpAddresses).to.eql([flpWithoutReveal, flpWithReveal])
     })
 
     it('Should return Launchpeg data', async () => {
-      const launchpegType = 1
-      const flatLaunchpegType = 2
       const user = alice.address
 
       let lensData = await lens.getLaunchpegData(lpWithReveal, user)
-      expectLensDataEqual(lensData, lpWithReveal, launchpegType, true)
+      expectLensDataEqual(lensData, lpWithReveal, LAUNCHPEG_TYPE, true)
 
       lensData = await lens.getLaunchpegData(lpWithoutReveal, user)
-      expectLensDataEqual(lensData, lpWithoutReveal, launchpegType, false)
+      expectLensDataEqual(lensData, lpWithoutReveal, LAUNCHPEG_TYPE, false)
 
       lensData = await lens.getLaunchpegData(flpWithReveal, user)
-      expectLensDataEqual(lensData, flpWithReveal, flatLaunchpegType, true)
+      expectLensDataEqual(lensData, flpWithReveal, FLAT_LAUNCHPEG_TYPE, true)
 
       lensData = await lens.getLaunchpegData(flpWithoutReveal, user)
-      expectLensDataEqual(lensData, flpWithoutReveal, flatLaunchpegType, false)
+      expectLensDataEqual(lensData, flpWithoutReveal, FLAT_LAUNCHPEG_TYPE, false)
     })
   })
 

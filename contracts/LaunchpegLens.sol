@@ -13,6 +13,8 @@ import "./interfaces/ILaunchpegFactory.sol";
 import "erc721a-upgradeable/contracts/ERC721AUpgradeable.sol";
 
 error LaunchpegLens__InvalidContract();
+error LaunchpegLens__InvalidLaunchpegType();
+error LaunchpegLens__InvalidLaunchpegVersion();
 
 /// @title Launchpeg Lens
 /// @author Trader Joe
@@ -125,16 +127,16 @@ contract LaunchpegLens {
     address public immutable batchReveal;
 
     /// @dev LaunchpegLens constructor
-    /// @param _launchpegFactoryV1 LaunchpegFactory V1 address
-    /// @param _launchpegFactoryV2 LaunchpegFactory V2 address
+    /// @param _launchpegFactoryV1 LaunchpegFactory V1
+    /// @param _launchpegFactoryV2 LaunchpegFactory V2
     /// @param _batchReveal BatchReveal address
     constructor(
-        address _launchpegFactoryV1,
-        address _launchpegFactoryV2,
+        ILaunchpegFactory _launchpegFactoryV1,
+        ILaunchpegFactory _launchpegFactoryV2,
         address _batchReveal
     ) {
-        launchpegFactoryV1 = ILaunchpegFactory(_launchpegFactoryV1);
-        launchpegFactoryV2 = ILaunchpegFactory(_launchpegFactoryV2);
+        launchpegFactoryV1 = _launchpegFactoryV1;
+        launchpegFactoryV2 = _launchpegFactoryV2;
         batchReveal = _batchReveal;
     }
 
@@ -160,24 +162,32 @@ contract LaunchpegLens {
     }
 
     /// @notice Fetch Launchpeg data by type and version
-    /// @param _type Type of Launchpeg to consider (0 - Launchpeg, 1 - FlatLaunchpeg)
-    /// @param _version Launchpeg version (1 or 2)
+    /// @param _type Type of Launchpeg to consider
+    /// @param _version Launchpeg version
     /// @param _number Number of Launchpeg to fetch
     /// @param _limit Last Launchpeg index to fetch
     /// @param _user Address to consider for NFT balances and allowlist allocations
     /// @return LensDataList List of contracts datas, in descending order
     function getLaunchpegsByTypeAndVersion(
-        uint8 _type,
-        uint8 _version,
+        LaunchpegType _type,
+        LaunchpegVersion _version,
         uint256 _number,
         uint256 _limit,
         address _user
     ) external view returns (LensData[] memory) {
+        if (_type == LaunchpegType.Unknown) {
+            revert LaunchpegLens__InvalidLaunchpegType();
+        }
+        if (_version == LaunchpegVersion.Unknown) {
+            revert LaunchpegLens__InvalidLaunchpegVersion();
+        }
         // default to v2 unless v1 is specified
-        ILaunchpegFactory factory = (_version == 1)
+        ILaunchpegFactory factory = (_version == LaunchpegVersion.V1)
             ? launchpegFactoryV1
             : launchpegFactoryV2;
-        uint256 numLaunchpegs = factory.numLaunchpegs(_type);
+        // 0 - Launchpeg, 1 - FlatLaunchpeg
+        uint256 lpTypeIdx = uint8(_type) - 1;
+        uint256 numLaunchpegs = factory.numLaunchpegs(lpTypeIdx);
 
         uint256 end = _limit > numLaunchpegs ? numLaunchpegs : _limit;
         uint256 start = _number > end ? 0 : end - _number;
@@ -187,7 +197,7 @@ contract LaunchpegLens {
 
         for (uint256 i = 0; i < LensDatas.length; i++) {
             LensDatas[i] = getLaunchpegData(
-                factory.allLaunchpegs(_type, end - 1 - i),
+                factory.allLaunchpegs(lpTypeIdx, end - 1 - i),
                 _user
             );
         }
