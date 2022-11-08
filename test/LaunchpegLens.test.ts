@@ -9,7 +9,7 @@ describe.skip('LaunchpegLens', function () {
   const LAUNCHPEG_TYPE = 1
   const FLAT_LAUNCHPEG_TYPE = 2
 
-  const launchpegFactoryV1Address: string = '0x7bfd7192e76d950832c77bb412aae841049d8d9b'
+  const launchpegFactoryV1Address: string = '0x7BFd7192E76D950832c77BB412aaE841049D8D9B'
 
   let launchpegCF: ContractFactory
   let flatLaunchpegCF: ContractFactory

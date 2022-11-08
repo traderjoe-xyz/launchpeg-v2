@@ -51,9 +51,9 @@ export const getProxyOwner = (chainId: string): string => {
 
 export const getLaunchpegFactoryV1 = (chainId: string): string => {
   if (chainId === '43113') {
-    return '0xdB40a7b71642FE24CC546bdF4749Aa3c0B042f78'
+    return '0x0d22EF1C5372677c8680fb485c6A1Ce43eA58eaF'
   } else if (chainId === '43114') {
-    return '0x64c4607AD853999EE5042Ba8377BfC4099C273DE'
+    return '0x7BFd7192E76D950832c77BB412aaE841049D8D9B'
   } else {
     throw `Unknown chain ID ${chainId}`
   }
