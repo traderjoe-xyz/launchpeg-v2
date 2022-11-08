@@ -1,6 +1,6 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { DeployFunction, DeployResult } from 'hardhat-deploy/types'
-import { getProxyOwner } from './utils'
+import { getProxyOwner } from '../tasks/utils'
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, ethers, getChainId, getNamedAccounts, run } = hre

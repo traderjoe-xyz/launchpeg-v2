@@ -1,6 +1,6 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { DeployFunction } from 'hardhat-deploy/types'
-import { getLaunchpegFactoryV1 } from './utils'
+import { getLaunchpegFactoryV1 } from '../tasks/utils'
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getChainId, getNamedAccounts, run } = hre
