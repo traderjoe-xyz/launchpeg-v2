@@ -34,13 +34,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     try {
       const implementationContract = await ethers.getContractAt('BatchReveal', proxyContract.implementation)
       await implementationContract.initialize()
-    } catch (err) {
-      console.error(err)
-    }
-  }
 
-  if (proxyContract && proxyContract.implementation) {
-    try {
       await run('verify:verify', {
         address: proxyContract.implementation,
         constructorArguments: constructorArgs,
