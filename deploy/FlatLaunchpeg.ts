@@ -2,17 +2,25 @@ import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { DeployFunction } from 'hardhat-deploy/types'
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployments, getNamedAccounts } = hre
+  const { deployments, getNamedAccounts, run } = hre
   const { deploy } = deployments
-
   const { deployer } = await getNamedAccounts()
 
-  await deploy('FlatLaunchpeg', {
+  const deployResult = await deploy('FlatLaunchpeg', {
     from: deployer,
     args: [],
     log: true,
     autoMine: true, // speed up deployment on local network (ganache, hardhat), no effect on live networks
   })
+
+  try {
+    await run('verify:verify', {
+      address: deployResult.address,
+    })
+  } catch (err) {
+    console.error(err)
+  }
 }
+
 export default func
 func.tags = ['FlatLaunchpeg']

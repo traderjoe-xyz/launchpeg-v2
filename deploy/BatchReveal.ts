@@ -8,19 +8,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await getNamedAccounts()
   const chainId = await getChainId()
 
-  const launchpegAddress = (await deployments.get('Launchpeg')).address
-  const flatLaunchpegAddress = (await deployments.get('FlatLaunchpeg')).address
-  const batchRevealAddress = (await deployments.get('BatchReveal')).address
-  const feePercent = 500
-  const feeCollector = deployer
-
   const proxyOwner = getProxyOwner(chainId)
   const constructorArgs: any[] = []
-  const initArgs = [launchpegAddress, flatLaunchpegAddress, batchRevealAddress, feePercent, feeCollector]
-
   let proxyContract: DeployResult | undefined
   await catchUnknownSigner(async () => {
-    proxyContract = await deploy('LaunchpegFactory', {
+    proxyContract = await deploy('BatchReveal', {
       from: deployer,
       args: constructorArgs,
       proxy: {
@@ -30,7 +22,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         execute: {
           init: {
             methodName: 'initialize',
-            args: initArgs,
+            args: [],
           },
         },
       },
@@ -40,8 +32,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   if (proxyContract && proxyContract.implementation) {
     try {
-      const implementationContract = await ethers.getContractAt('LaunchpegFactory', proxyContract.implementation)
-      await implementationContract.initialize(...initArgs)
+      const implementationContract = await ethers.getContractAt('BatchReveal', proxyContract.implementation)
+      await implementationContract.initialize()
 
       await run('verify:verify', {
         address: proxyContract.implementation,
@@ -52,6 +44,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     }
   }
 }
+
 export default func
-func.tags = ['LaunchpegFactory']
-func.dependencies = ['Launchpeg', 'FlatLaunchpeg', 'BatchReveal']
+func.tags = ['BatchReveal']

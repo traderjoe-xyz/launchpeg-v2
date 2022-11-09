@@ -21,12 +21,12 @@ task('deploy-launchpeg', 'Deploy Launchpeg contract')
       launchConfig.symbol,
       launchConfig.projectOwner,
       launchConfig.royaltyReceiver,
-      launchConfig.maxBatchSize,
+      launchConfig.maxPerAddressDuringMint,
       launchConfig.collectionSize,
       launchConfig.amountForAuction,
       launchConfig.amountForAllowlist,
       launchConfig.amountForDevs,
-      [launchConfig.batchRevealSize, launchConfig.batchRevealStart, launchConfig.batchRevealInterval]
+      launchConfig.enableBatchReveal
     )
 
     await creationTx.wait()
@@ -45,9 +45,11 @@ task('deploy-launchpeg', 'Deploy Launchpeg contract')
       launchConfig.auctionStartPrice,
       launchConfig.auctionEndPrice,
       launchConfig.auctionDropInterval,
+      launchConfig.preMintStartTime,
       launchConfig.allowlistStartTime,
       launchConfig.allowlistDiscountPercent,
       launchConfig.publicSaleStartTime,
+      launchConfig.publicSaleEndTime,
       launchConfig.publicSaleDiscountPercent
     )
 
@@ -68,12 +70,12 @@ task('deploy-launchpeg', 'Deploy Launchpeg contract')
       })
     }
 
-    if (launchConfig.keyHash && launchConfig.subscriptionId && launchConfig.maxGasLimit) {
-      await hre.run('set-VRF', {
-        contractAddress: launchpeg.address,
-        keyHash: launchConfig.keyHash,
-        subscriptionId: launchConfig.subscriptionId,
-        maxGasLimit: launchConfig.maxGasLimit,
+    if (launchConfig.enableBatchReveal) {
+      await hre.run('configure-batch-reveal', {
+        baseLaunchpeg: launchpegAddress,
+        revealBatchSize: launchConfig.revealBatchSize,
+        revealStartTime: launchConfig.revealStartTime,
+        revealInterval: launchConfig.revealInterval,
       })
     }
   })

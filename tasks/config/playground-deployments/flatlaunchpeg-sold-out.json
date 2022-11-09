@@ -3,15 +3,18 @@
   "symbol": "FJPG",
   "projectOwner": "0x1119fbb02f38764cd90f2d9fb35fedcd8378ac2a",
   "royaltyReceiver": "0x1119fbb02f38764cd90f2d9fb35fedcd8378ac2a",
-  "maxBatchSize": "100",
+  "maxPerAddressDuringMint": "100",
   "collectionSize": "100",
   "amountForDevs": "100",
   "amountForAllowlist": "0",
-  "batchRevealSize": "100",
-  "batchRevealStart": "0",
-  "batchRevealInterval": "0",
+  "enableBatchReveal": true,
+  "revealBatchSize": "100",
+  "revealStartTime": "0",
+  "revealInterval": "0",
   "allowlistPrice": "500000000000000000",
   "salePrice": "1000000000000000000",
+  "preMintStartTime": "Soon",
   "allowlistStartTime": "Soon",
-  "publicSaleStartTime": "Soon"
+  "publicSaleStartTime": "Soon",
+  "publicSaleEndTime": "Soon"
 }
