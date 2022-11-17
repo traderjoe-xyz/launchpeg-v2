@@ -53,6 +53,7 @@ contract LaunchpegLens {
         uint256 lastAuctionPrice;
         uint256 amountMintedDuringAuction;
         uint256 amountMintedDuringPreMint;
+        uint256 amountClaimedDuringPreMint;
         uint256 amountMintedDuringAllowlist;
         uint256 amountMintedDuringPublicSale;
     }
@@ -68,6 +69,7 @@ contract LaunchpegLens {
         uint256 allowlistPrice;
         uint256 salePrice;
         uint256 amountMintedDuringPreMint;
+        uint256 amountClaimedDuringPreMint;
         uint256 amountMintedDuringAllowlist;
         uint256 amountMintedDuringPublicSale;
     }
@@ -336,6 +338,7 @@ contract LaunchpegLens {
             data.preMintStartTime = lp.preMintStartTime();
             data.publicSaleEndTime = lp.publicSaleEndTime();
             data.amountMintedDuringPreMint = lp.amountMintedDuringPreMint();
+            data.amountClaimedDuringPreMint = lp.amountClaimedDuringPreMint();
         }
     }
 
@@ -360,6 +363,7 @@ contract LaunchpegLens {
             data.preMintStartTime = lp.preMintStartTime();
             data.publicSaleEndTime = lp.publicSaleEndTime();
             data.amountMintedDuringPreMint = lp.amountMintedDuringPreMint();
+            data.amountClaimedDuringPreMint = lp.amountClaimedDuringPreMint();
         }
     }
 
