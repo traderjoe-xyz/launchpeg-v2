@@ -79,7 +79,7 @@ abstract contract SafeAccessControlEnumerableUpgradeable is
     function grantRole(bytes32 role, address account)
         public
         virtual
-        override
+        override(AccessControlUpgradeable, IAccessControlUpgradeable)
         roleIsNotDefaultAdmin(role)
         onlyOwnerOrRole(getRoleAdmin(role))
     {
@@ -101,7 +101,7 @@ abstract contract SafeAccessControlEnumerableUpgradeable is
     function revokeRole(bytes32 role, address account)
         public
         virtual
-        override
+        override(AccessControlUpgradeable, IAccessControlUpgradeable)
         roleIsNotDefaultAdmin(role)
         onlyOwnerOrRole(getRoleAdmin(role))
     {
@@ -129,7 +129,7 @@ abstract contract SafeAccessControlEnumerableUpgradeable is
     function renounceRole(bytes32 role, address account)
         public
         virtual
-        override
+        override(AccessControlUpgradeable, IAccessControlUpgradeable)
         roleIsNotDefaultAdmin(role)
     {
         super.renounceRole(role, account);
