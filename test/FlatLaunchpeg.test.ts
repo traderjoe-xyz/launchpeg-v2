@@ -134,28 +134,28 @@ describe('FlatLaunchpeg', () => {
     it('Should revert if pre-mint start is before block timestamp', async () => {
       config.preMintStartTime = BigNumber.from(0)
       await expect(initializePhasesFlatLaunchpeg(flatLaunchpeg, config, Phase.NotStarted)).to.be.revertedWith(
-        'Launchpeg__InvalidStartTime()'
+        'Launchpeg__InvalidPhases()'
       )
     })
 
     it('Should revert if allowlist is before pre-mint', async () => {
       config.allowlistStartTime = config.preMintStartTime.sub(duration.minutes(20))
       await expect(initializePhasesFlatLaunchpeg(flatLaunchpeg, config, Phase.NotStarted)).to.be.revertedWith(
-        'Launchpeg__AllowlistBeforePreMint()'
+        'Launchpeg__InvalidPhases()'
       )
     })
 
     it('Should revert if public sale start is before allowlist start', async () => {
       config.publicSaleStartTime = config.allowlistStartTime.sub(duration.minutes(20))
       await expect(initializePhasesFlatLaunchpeg(flatLaunchpeg, config, Phase.NotStarted)).to.be.revertedWith(
-        'Launchpeg__PublicSaleBeforeAllowlist()'
+        'Launchpeg__InvalidPhases()'
       )
     })
 
     it('Should revert if public sale end time is before public sale start time', async () => {
       config.publicSaleEndTime = config.publicSaleStartTime.sub(duration.minutes(20))
       await expect(initializePhasesFlatLaunchpeg(flatLaunchpeg, config, Phase.NotStarted)).to.be.revertedWith(
-        'Launchpeg__PublicSaleEndBeforePublicSaleStart()'
+        'Launchpeg__InvalidPhases()'
       )
     })
 
@@ -195,12 +195,12 @@ describe('FlatLaunchpeg', () => {
       const blockTimestamp = await latest()
       let invalidPreMintStartTime = blockTimestamp.sub(duration.minutes(30))
       await expect(flatLaunchpeg.setPreMintStartTime(invalidPreMintStartTime)).to.be.revertedWith(
-        'Launchpeg__InvalidStartTime()'
+        'Launchpeg__InvalidPhases()'
       )
 
       invalidPreMintStartTime = config.allowlistStartTime.add(duration.minutes(30))
       await expect(flatLaunchpeg.setPreMintStartTime(invalidPreMintStartTime)).to.be.revertedWith(
-        'Launchpeg__AllowlistBeforePreMint()'
+        'Launchpeg__InvalidPhases()'
       )
     })
 

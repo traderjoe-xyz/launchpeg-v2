@@ -10,7 +10,7 @@ import "./interfaces/IBatchReveal.sol";
 import "./interfaces/IFlatLaunchpeg.sol";
 import "./interfaces/ILaunchpeg.sol";
 import "./interfaces/ILaunchpegFactory.sol";
-import "erc721a-upgradeable/contracts/ERC721AUpgradeable.sol";
+import "./ERC721AUpgradeable.sol";
 
 error LaunchpegLens__InvalidContract();
 error LaunchpegLens__InvalidLaunchpegType();
