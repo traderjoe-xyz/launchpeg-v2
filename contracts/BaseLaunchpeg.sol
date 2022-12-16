@@ -956,6 +956,8 @@ abstract contract BaseLaunchpeg is
         }
     }
 
+    /// @dev Checks if the address (the operator) trying to transfer the NFT is allowed
+    /// @param operator Address of the operator
     function _checkFilterOperator(address operator) internal view virtual {
         IOperatorFilterRegistry registry = operatorFilterRegistry;
         // Check registry code length to facilitate testing in environments without a deployed registry.
@@ -968,6 +970,9 @@ abstract contract BaseLaunchpeg is
         }
     }
 
+    /// @dev `setApprovalForAll` wrapper to prevent the sender to approve a non-allowed operator
+    /// @param operator Address being approved
+    /// @param approved Whether the operator is approved or not
     function setApprovalForAll(address operator, bool approved)
         public
         override(ERC721AUpgradeable, IERC721Upgradeable)
@@ -976,6 +981,9 @@ abstract contract BaseLaunchpeg is
         super.setApprovalForAll(operator, approved);
     }
 
+    /// @dev `aprove` wrapper to prevent the sender to approve a non-allowed operator
+    /// @param operator Address being approved
+    /// @param tokenId TokenID approved
     function approve(address operator, uint256 tokenId)
         public
         override(ERC721AUpgradeable, IERC721Upgradeable)
@@ -984,6 +992,10 @@ abstract contract BaseLaunchpeg is
         super.approve(operator, tokenId);
     }
 
+    /// @dev `transferFrom` wrapper to prevent a non-allowed operator to transfer the NFT
+    /// @param from Address to transfer from
+    /// @param to Address to transfer to
+    /// @param tokenId TokenID to transfer
     function transferFrom(
         address from,
         address to,
@@ -996,6 +1008,10 @@ abstract contract BaseLaunchpeg is
         super.transferFrom(from, to, tokenId);
     }
 
+    /// @dev `safeTransferFrom` wrapper to prevent a non-allowed operator to transfer the NFT
+    /// @param from Address to transfer from
+    /// @param to Address to transfer to
+    /// @param tokenId TokenID to transfer
     function safeTransferFrom(
         address from,
         address to,
@@ -1008,6 +1024,11 @@ abstract contract BaseLaunchpeg is
         super.safeTransferFrom(from, to, tokenId);
     }
 
+    /// @dev `safeTransferFrom` wrapper to prevent a non-allowed operator to transfer the NFT
+    /// @param from Address to transfer from
+    /// @param to Address to transfer to
+    /// @param tokenId TokenID to transfer
+    /// @param data Data to send along with a safe transfer check
     function safeTransferFrom(
         address from,
         address to,
