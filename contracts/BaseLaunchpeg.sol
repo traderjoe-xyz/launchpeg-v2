@@ -971,9 +971,7 @@ abstract contract BaseLaunchpeg is
     function _checkFilterOperator(address operator) internal view virtual {
         IOperatorFilterRegistry registry = operatorFilterRegistry;
         // Check registry code length to facilitate testing in environments without a deployed registry.
-        if (
-            address(registry) != address(0) && address(registry).code.length > 0
-        ) {
+        if (address(registry).code.length > 0) {
             if (!registry.isOperatorAllowed(address(this), operator)) {
                 revert OperatorNotAllowed(operator);
             }
