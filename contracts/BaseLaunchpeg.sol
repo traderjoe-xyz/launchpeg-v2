@@ -198,7 +198,9 @@ abstract contract BaseLaunchpeg is
 
     /// @dev Emitted on updateOperatorFilterRegistryAddress()
     /// @param operatorFilterRegistry New operator filter registry
-    event OperatorFilterRegistryUpdated(address indexed operatorFilterRegistry);
+    event OperatorFilterRegistryUpdated(
+        IOperatorFilterRegistry indexed operatorFilterRegistry
+    );
 
     modifier isEOA() {
         if (tx.origin != msg.sender) {
@@ -302,7 +304,7 @@ abstract contract BaseLaunchpeg is
                 0x3cc6CddA760b79bAfa08dF41ECFA224f810dCeB6
             );
         }
-        operatorFilterRegistry = _operatorFilterRegistry;
+        _updateOperatorFilterRegistryAddress(_operatorFilterRegistry);
 
         // Default royalty is 5%
         _setDefaultRoyalty(_ownerData.royaltyReceiver, 500);
@@ -374,12 +376,10 @@ abstract contract BaseLaunchpeg is
     /// @notice Update the address that the contract will make OperatorFilter checks against. When set to the zero
     /// address, checks will be bypassed. OnlyOwner
     /// @param _newRegistry The address of the new OperatorFilterRegistry
-    function updateOperatorFilterRegistryAddress(address _newRegistry)
-        external
-        onlyOwner
-    {
-        operatorFilterRegistry = IOperatorFilterRegistry(_newRegistry);
-        emit OperatorFilterRegistryUpdated(_newRegistry);
+    function updateOperatorFilterRegistryAddress(
+        IOperatorFilterRegistry _newRegistry
+    ) external onlyOwner {
+        _updateOperatorFilterRegistryAddress(_newRegistry);
     }
 
     /// @notice Set amount of NFTs mintable per address during the allowlist phase
@@ -954,6 +954,16 @@ abstract contract BaseLaunchpeg is
         if (remainingQty != 0) {
             _mint(_sender, remainingQty, "", false);
         }
+    }
+
+    /// @dev Update the address that the contract will make OperatorFilter checks against. When set to the zero
+    /// address, checks will be bypassed.
+    /// @param _newRegistry The address of the new OperatorFilterRegistry
+    function _updateOperatorFilterRegistryAddress(
+        IOperatorFilterRegistry _newRegistry
+    ) private {
+        operatorFilterRegistry = _newRegistry;
+        emit OperatorFilterRegistryUpdated(_newRegistry);
     }
 
     /// @dev Checks if the address (the operator) trying to transfer the NFT is allowed
