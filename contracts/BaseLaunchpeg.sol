@@ -5,7 +5,8 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "@openzeppelin/contracts-upgradeable/token/common/ERC2981Upgradeable.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
 
-import "erc721a-upgradeable/contracts/ERC721AUpgradeable.sol";
+import "./ERC721AUpgradeable.sol";
+import "operator-filter-registry/src/IOperatorFilterRegistry.sol";
 
 import "./LaunchpegErrors.sol";
 import "./interfaces/IBaseLaunchpeg.sol";
@@ -114,6 +115,10 @@ abstract contract BaseLaunchpeg is
     /// @notice Start time when funds can be withdrawn
     uint256 public override withdrawAVAXStartTime;
 
+    /// @notice Contract filtering allowed operators, preventing unauthorized contract to transfer NFTs
+    /// By default, Launchpeg contracts are subscribed to OpenSea's Curated Subscription Address at 0x3cc6CddA760b79bAfa08dF41ECFA224f810dCeB6
+    IOperatorFilterRegistry public operatorFilterRegistry;
+
     /// @dev Set of pending pre-mint data (user address and quantity)
     PreMintDataSet private _pendingPreMints;
 
@@ -191,6 +196,12 @@ abstract contract BaseLaunchpeg is
     /// @param withdrawAVAXStartTime New withdraw AVAX start time
     event WithdrawAVAXStartTimeSet(uint256 withdrawAVAXStartTime);
 
+    /// @dev Emitted on updateOperatorFilterRegistryAddress()
+    /// @param operatorFilterRegistry New operator filter registry
+    event OperatorFilterRegistryUpdated(
+        IOperatorFilterRegistry indexed operatorFilterRegistry
+    );
+
     modifier isEOA() {
         if (tx.origin != msg.sender) {
             revert Launchpeg__Unauthorized();
@@ -230,8 +241,24 @@ abstract contract BaseLaunchpeg is
     /// @notice Checks if new time is equal to or after block timestamp
     modifier isNotBeforeBlockTimestamp(uint256 _newTime) {
         if (_newTime < block.timestamp) {
-            revert Launchpeg__InvalidStartTime();
+            revert Launchpeg__InvalidPhases();
         }
+        _;
+    }
+
+    /// @notice Allow spending tokens from addresses with balance
+    /// Note that this still allows listings and marketplaces with escrow to transfer tokens if transferred
+    /// from an EOA.
+    modifier onlyAllowedOperator(address from) virtual {
+        if (from != msg.sender) {
+            _checkFilterOperator(msg.sender);
+        }
+        _;
+    }
+
+    /// @notice Allow approving tokens transfers
+    modifier onlyAllowedOperatorApproval(address operator) virtual {
+        _checkFilterOperator(operator);
         _;
     }
 
@@ -266,6 +293,18 @@ abstract contract BaseLaunchpeg is
         ) {
             revert Launchpeg__InvalidMaxPerAddressDuringMint();
         }
+
+        // Initialize the operator filter registry and subcribe to OpenSea's list
+        IOperatorFilterRegistry _operatorFilterRegistry = IOperatorFilterRegistry(
+                0x000000000000AAeB6D7670E522A718067333cd4E
+            );
+        if (address(_operatorFilterRegistry).code.length > 0) {
+            _operatorFilterRegistry.registerAndSubscribe(
+                address(this),
+                0x3cc6CddA760b79bAfa08dF41ECFA224f810dCeB6
+            );
+        }
+        _updateOperatorFilterRegistryAddress(_operatorFilterRegistry);
 
         // Default royalty is 5%
         _setDefaultRoyalty(_ownerData.royaltyReceiver, 500);
@@ -334,6 +373,15 @@ abstract contract BaseLaunchpeg is
         emit DefaultRoyaltySet(_receiver, _feePercent);
     }
 
+    /// @notice Update the address that the contract will make OperatorFilter checks against. When set to the zero
+    /// address, checks will be bypassed. OnlyOwner
+    /// @param _newRegistry The address of the new OperatorFilterRegistry
+    function updateOperatorFilterRegistryAddress(
+        IOperatorFilterRegistry _newRegistry
+    ) external onlyOwner {
+        _updateOperatorFilterRegistryAddress(_newRegistry);
+    }
+
     /// @notice Set amount of NFTs mintable per address during the allowlist phase
     /// @param _addresses List of addresses allowed to mint during the allowlist phase
     /// @param _numNfts List of NFT quantities mintable per address
@@ -384,11 +432,11 @@ abstract contract BaseLaunchpeg is
         isTimeUpdateAllowed(allowlistStartTime)
         isNotBeforeBlockTimestamp(_allowlistStartTime)
     {
-        if (_allowlistStartTime < preMintStartTime) {
-            revert Launchpeg__AllowlistBeforePreMint();
-        }
-        if (publicSaleStartTime < _allowlistStartTime) {
-            revert Launchpeg__PublicSaleBeforeAllowlist();
+        if (
+            _allowlistStartTime < preMintStartTime ||
+            publicSaleStartTime < _allowlistStartTime
+        ) {
+            revert Launchpeg__InvalidPhases();
         }
         allowlistStartTime = _allowlistStartTime;
         emit AllowlistStartTimeSet(_allowlistStartTime);
@@ -405,12 +453,13 @@ abstract contract BaseLaunchpeg is
         isTimeUpdateAllowed(publicSaleStartTime)
         isNotBeforeBlockTimestamp(_publicSaleStartTime)
     {
-        if (_publicSaleStartTime < allowlistStartTime) {
-            revert Launchpeg__PublicSaleBeforeAllowlist();
+        if (
+            _publicSaleStartTime < allowlistStartTime ||
+            publicSaleEndTime < _publicSaleStartTime
+        ) {
+            revert Launchpeg__InvalidPhases();
         }
-        if (publicSaleEndTime < _publicSaleStartTime) {
-            revert Launchpeg__PublicSaleEndBeforePublicSaleStart();
-        }
+
         publicSaleStartTime = _publicSaleStartTime;
         emit PublicSaleStartTimeSet(_publicSaleStartTime);
     }
@@ -427,7 +476,7 @@ abstract contract BaseLaunchpeg is
         isNotBeforeBlockTimestamp(_publicSaleEndTime)
     {
         if (_publicSaleEndTime < publicSaleStartTime) {
-            revert Launchpeg__PublicSaleEndBeforePublicSaleStart();
+            revert Launchpeg__InvalidPhases();
         }
         publicSaleEndTime = _publicSaleEndTime;
         emit PublicSaleEndTimeSet(_publicSaleEndTime);
@@ -905,5 +954,99 @@ abstract contract BaseLaunchpeg is
         if (remainingQty != 0) {
             _mint(_sender, remainingQty, "", false);
         }
+    }
+
+    /// @dev Update the address that the contract will make OperatorFilter checks against. When set to the zero
+    /// address, checks will be bypassed.
+    /// @param _newRegistry The address of the new OperatorFilterRegistry
+    function _updateOperatorFilterRegistryAddress(
+        IOperatorFilterRegistry _newRegistry
+    ) private {
+        operatorFilterRegistry = _newRegistry;
+        emit OperatorFilterRegistryUpdated(_newRegistry);
+    }
+
+    /// @dev Checks if the address (the operator) trying to transfer the NFT is allowed
+    /// @param operator Address of the operator
+    function _checkFilterOperator(address operator) internal view virtual {
+        IOperatorFilterRegistry registry = operatorFilterRegistry;
+        // Check registry code length to facilitate testing in environments without a deployed registry.
+        if (address(registry).code.length > 0) {
+            if (!registry.isOperatorAllowed(address(this), operator)) {
+                revert OperatorNotAllowed(operator);
+            }
+        }
+    }
+
+    /// @dev `setApprovalForAll` wrapper to prevent the sender to approve a non-allowed operator
+    /// @param operator Address being approved
+    /// @param approved Whether the operator is approved or not
+    function setApprovalForAll(address operator, bool approved)
+        public
+        override(ERC721AUpgradeable, IERC721Upgradeable)
+        onlyAllowedOperatorApproval(operator)
+    {
+        super.setApprovalForAll(operator, approved);
+    }
+
+    /// @dev `aprove` wrapper to prevent the sender to approve a non-allowed operator
+    /// @param operator Address being approved
+    /// @param tokenId TokenID approved
+    function approve(address operator, uint256 tokenId)
+        public
+        override(ERC721AUpgradeable, IERC721Upgradeable)
+        onlyAllowedOperatorApproval(operator)
+    {
+        super.approve(operator, tokenId);
+    }
+
+    /// @dev `transferFrom` wrapper to prevent a non-allowed operator to transfer the NFT
+    /// @param from Address to transfer from
+    /// @param to Address to transfer to
+    /// @param tokenId TokenID to transfer
+    function transferFrom(
+        address from,
+        address to,
+        uint256 tokenId
+    )
+        public
+        override(ERC721AUpgradeable, IERC721Upgradeable)
+        onlyAllowedOperator(from)
+    {
+        super.transferFrom(from, to, tokenId);
+    }
+
+    /// @dev `safeTransferFrom` wrapper to prevent a non-allowed operator to transfer the NFT
+    /// @param from Address to transfer from
+    /// @param to Address to transfer to
+    /// @param tokenId TokenID to transfer
+    function safeTransferFrom(
+        address from,
+        address to,
+        uint256 tokenId
+    )
+        public
+        override(ERC721AUpgradeable, IERC721Upgradeable)
+        onlyAllowedOperator(from)
+    {
+        super.safeTransferFrom(from, to, tokenId);
+    }
+
+    /// @dev `safeTransferFrom` wrapper to prevent a non-allowed operator to transfer the NFT
+    /// @param from Address to transfer from
+    /// @param to Address to transfer to
+    /// @param tokenId TokenID to transfer
+    /// @param data Data to send along with a safe transfer check
+    function safeTransferFrom(
+        address from,
+        address to,
+        uint256 tokenId,
+        bytes memory data
+    )
+        public
+        override(ERC721AUpgradeable, IERC721Upgradeable)
+        onlyAllowedOperator(from)
+    {
+        super.safeTransferFrom(from, to, tokenId, data);
     }
 }

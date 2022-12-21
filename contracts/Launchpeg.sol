@@ -124,24 +124,17 @@ contract Launchpeg is BaseLaunchpeg, ILaunchpeg {
         uint256 _publicSaleEndTime,
         uint256 _publicSaleDiscountPercent
     ) external override onlyOwner atPhase(Phase.NotStarted) {
-        if (_auctionSaleStartTime < block.timestamp) {
-            revert Launchpeg__InvalidStartTime();
+        if (
+            _auctionSaleStartTime < block.timestamp ||
+            _auctionStartPrice <= _auctionEndPrice ||
+            _preMintStartTime <= _auctionSaleStartTime ||
+            _allowlistStartTime < _preMintStartTime ||
+            _publicSaleStartTime < _allowlistStartTime ||
+            _publicSaleEndTime < _publicSaleStartTime
+        ) {
+            revert Launchpeg__InvalidPhases();
         }
-        if (_auctionStartPrice <= _auctionEndPrice) {
-            revert Launchpeg__EndPriceGreaterThanStartPrice();
-        }
-        if (_preMintStartTime <= _auctionSaleStartTime) {
-            revert Launchpeg__PreMintBeforeAuction();
-        }
-        if (_allowlistStartTime < _preMintStartTime) {
-            revert Launchpeg__AllowlistBeforePreMint();
-        }
-        if (_publicSaleStartTime < _allowlistStartTime) {
-            revert Launchpeg__PublicSaleBeforeAllowlist();
-        }
-        if (_publicSaleEndTime < _publicSaleStartTime) {
-            revert Launchpeg__PublicSaleEndBeforePublicSaleStart();
-        }
+
         if (
             _allowlistDiscountPercent > BASIS_POINT_PRECISION ||
             _publicSaleDiscountPercent > BASIS_POINT_PRECISION
@@ -203,7 +196,7 @@ contract Launchpeg is BaseLaunchpeg, ILaunchpeg {
         isNotBeforeBlockTimestamp(_auctionSaleStartTime)
     {
         if (preMintStartTime <= _auctionSaleStartTime) {
-            revert Launchpeg__PreMintBeforeAuction();
+            revert Launchpeg__InvalidPhases();
         }
         auctionSaleStartTime = _auctionSaleStartTime;
         emit AuctionSaleStartTimeSet(_auctionSaleStartTime);
@@ -220,12 +213,13 @@ contract Launchpeg is BaseLaunchpeg, ILaunchpeg {
         isTimeUpdateAllowed(preMintStartTime)
         isNotBeforeBlockTimestamp(_preMintStartTime)
     {
-        if (_preMintStartTime <= auctionSaleStartTime) {
-            revert Launchpeg__PreMintBeforeAuction();
+        if (
+            _preMintStartTime <= auctionSaleStartTime ||
+            allowlistStartTime < _preMintStartTime
+        ) {
+            revert Launchpeg__InvalidPhases();
         }
-        if (allowlistStartTime < _preMintStartTime) {
-            revert Launchpeg__AllowlistBeforePreMint();
-        }
+
         preMintStartTime = _preMintStartTime;
         emit PreMintStartTimeSet(_preMintStartTime);
     }
@@ -313,25 +307,13 @@ contract Launchpeg is BaseLaunchpeg, ILaunchpeg {
             return Phase.NotStarted;
         } else if (totalSupply() >= collectionSize) {
             return Phase.Ended;
-        } else if (
-            block.timestamp >= auctionSaleStartTime &&
-            block.timestamp < preMintStartTime
-        ) {
+        } else if (block.timestamp < preMintStartTime) {
             return Phase.DutchAuction;
-        } else if (
-            block.timestamp >= preMintStartTime &&
-            block.timestamp < allowlistStartTime
-        ) {
+        } else if (block.timestamp < allowlistStartTime) {
             return Phase.PreMint;
-        } else if (
-            block.timestamp >= allowlistStartTime &&
-            block.timestamp < publicSaleStartTime
-        ) {
+        } else if (block.timestamp < publicSaleStartTime) {
             return Phase.Allowlist;
-        } else if (
-            block.timestamp >= publicSaleStartTime &&
-            block.timestamp < publicSaleEndTime
-        ) {
+        } else if (block.timestamp < publicSaleEndTime) {
             return Phase.PublicSale;
         }
         return Phase.Ended;

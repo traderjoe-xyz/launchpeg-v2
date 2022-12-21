@@ -59,18 +59,15 @@ contract FlatLaunchpeg is BaseLaunchpeg, IFlatLaunchpeg {
         uint256 _allowlistPrice,
         uint256 _salePrice
     ) external override onlyOwner atPhase(Phase.NotStarted) {
-        if (_preMintStartTime < block.timestamp) {
-            revert Launchpeg__InvalidStartTime();
+        if (
+            _preMintStartTime < block.timestamp ||
+            _allowlistStartTime < _preMintStartTime ||
+            _publicSaleStartTime < _allowlistStartTime ||
+            _publicSaleEndTime < _publicSaleStartTime
+        ) {
+            revert Launchpeg__InvalidPhases();
         }
-        if (_allowlistStartTime < _preMintStartTime) {
-            revert Launchpeg__AllowlistBeforePreMint();
-        }
-        if (_publicSaleStartTime < _allowlistStartTime) {
-            revert Launchpeg__PublicSaleBeforeAllowlist();
-        }
-        if (_publicSaleEndTime < _publicSaleStartTime) {
-            revert Launchpeg__PublicSaleEndBeforePublicSaleStart();
-        }
+
         if (_allowlistPrice > _salePrice) {
             revert Launchpeg__InvalidAllowlistPrice();
         }
@@ -105,7 +102,7 @@ contract FlatLaunchpeg is BaseLaunchpeg, IFlatLaunchpeg {
         isNotBeforeBlockTimestamp(_preMintStartTime)
     {
         if (allowlistStartTime < _preMintStartTime) {
-            revert Launchpeg__AllowlistBeforePreMint();
+            revert Launchpeg__InvalidPhases();
         }
         preMintStartTime = _preMintStartTime;
         emit PreMintStartTimeSet(_preMintStartTime);

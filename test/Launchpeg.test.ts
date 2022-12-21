@@ -150,7 +150,7 @@ describe('Launchpeg', () => {
       const prevAuctionStartTime = config.auctionStartTime
       config.auctionStartTime = BigNumber.from(0)
       await expect(initializePhasesLaunchpeg(launchpeg, config, Phase.NotStarted)).to.be.revertedWith(
-        'Launchpeg__InvalidStartTime()'
+        'Launchpeg__InvalidPhases()'
       )
 
       config.auctionStartTime = prevAuctionStartTime
@@ -164,26 +164,26 @@ describe('Launchpeg', () => {
       config.startPrice = ethers.utils.parseEther('1')
       config.endPrice = ethers.utils.parseEther('1.5')
       await expect(initializePhasesLaunchpeg(launchpeg, config, Phase.NotStarted)).to.be.revertedWith(
-        'Launchpeg__EndPriceGreaterThanStartPrice()'
+        'Launchpeg__InvalidPhases()'
       )
 
       config.endPrice = ethers.utils.parseEther('1')
       await expect(initializePhasesLaunchpeg(launchpeg, config, Phase.NotStarted)).to.be.revertedWith(
-        'Launchpeg__EndPriceGreaterThanStartPrice()'
+        'Launchpeg__InvalidPhases()'
       )
     })
 
     it('Should revert if pre-mint is before auction', async () => {
       config.preMintStartTime = config.auctionStartTime.sub(duration.minutes(10))
       await expect(initializePhasesLaunchpeg(launchpeg, config, Phase.NotStarted)).to.be.revertedWith(
-        'Launchpeg__PreMintBeforeAuction()'
+        'Launchpeg__InvalidPhases()'
       )
     })
 
     it('Should revert if allowlist is before pre-mint', async () => {
       config.allowlistStartTime = config.preMintStartTime.sub(duration.minutes(10))
       await expect(initializePhasesLaunchpeg(launchpeg, config, Phase.NotStarted)).to.be.revertedWith(
-        'Launchpeg__AllowlistBeforePreMint()'
+        'Launchpeg__InvalidPhases()'
       )
     })
 
@@ -191,13 +191,13 @@ describe('Launchpeg', () => {
       const prevPublicSaleStartTime = config.publicSaleStartTime
       config.publicSaleStartTime = config.allowlistStartTime.sub(duration.minutes(20))
       await expect(initializePhasesLaunchpeg(launchpeg, config, Phase.NotStarted)).to.be.revertedWith(
-        'Launchpeg__PublicSaleBeforeAllowlist()'
+        'Launchpeg__InvalidPhases()'
       )
 
       config.publicSaleStartTime = prevPublicSaleStartTime
       config.publicSaleEndTime = config.publicSaleStartTime.sub(duration.minutes(60))
       await expect(initializePhasesLaunchpeg(launchpeg, config, Phase.NotStarted)).to.be.revertedWith(
-        'Launchpeg__PublicSaleEndBeforePublicSaleStart()'
+        'Launchpeg__InvalidPhases()'
       )
     })
 
@@ -245,12 +245,12 @@ describe('Launchpeg', () => {
       const blockTimestamp = await latest()
       let invalidAuctionSaleStartTime = blockTimestamp.sub(duration.minutes(30))
       await expect(launchpeg.setAuctionSaleStartTime(invalidAuctionSaleStartTime)).to.be.revertedWith(
-        'Launchpeg__InvalidStartTime()'
+        'Launchpeg__InvalidPhases()'
       )
 
       invalidAuctionSaleStartTime = config.preMintStartTime.add(duration.minutes(30))
       await expect(launchpeg.setAuctionSaleStartTime(invalidAuctionSaleStartTime)).to.be.revertedWith(
-        'Launchpeg__PreMintBeforeAuction()'
+        'Launchpeg__InvalidPhases()'
       )
     })
 
@@ -276,20 +276,18 @@ describe('Launchpeg', () => {
     it('Should revert if pre-mint start time is before block timestamp', async () => {
       const blockTimestamp = await latest()
       const newPreMintStartTime = blockTimestamp.sub(1)
-      await expect(launchpeg.setPreMintStartTime(newPreMintStartTime)).to.be.revertedWith(
-        'Launchpeg__InvalidStartTime()'
-      )
+      await expect(launchpeg.setPreMintStartTime(newPreMintStartTime)).to.be.revertedWith('Launchpeg__InvalidPhases()')
     })
 
     it('Should revert if pre-mint is before auction or after allowlist', async () => {
       let invalidPreMintStartTime = config.auctionStartTime.sub(duration.minutes(1))
       await expect(launchpeg.setPreMintStartTime(invalidPreMintStartTime)).to.be.revertedWith(
-        'Launchpeg__PreMintBeforeAuction()'
+        'Launchpeg__InvalidPhases()'
       )
 
       invalidPreMintStartTime = config.allowlistStartTime.add(duration.minutes(30))
       await expect(launchpeg.setPreMintStartTime(invalidPreMintStartTime)).to.be.revertedWith(
-        'Launchpeg__AllowlistBeforePreMint()'
+        'Launchpeg__InvalidPhases()'
       )
     })
 

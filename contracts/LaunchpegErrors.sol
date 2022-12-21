@@ -6,13 +6,11 @@ error LaunchpegFactory__InvalidBatchReveal();
 error LaunchpegFactory__InvalidImplementation();
 
 // Launchpeg
-error Launchpeg__AllowlistBeforePreMint();
 error Launchpeg__BatchRevealAlreadyInitialized();
 error Launchpeg__BatchRevealDisabled();
 error Launchpeg__BatchRevealNotInitialized();
 error Launchpeg__BatchRevealStarted();
 error Launchpeg__CanNotMintThisMany();
-error Launchpeg__EndPriceGreaterThanStartPrice();
 error Launchpeg__HasBeenForceRevealed();
 error Launchpeg__InvalidAllowlistPrice();
 error Launchpeg__InvalidAuctionDropInterval();
@@ -30,7 +28,7 @@ error Launchpeg__InvalidPercent();
 error Launchpeg__InvalidQuantity();
 error Launchpeg__InvalidRevealDates();
 error Launchpeg__InvalidRoyaltyInfo();
-error Launchpeg__InvalidStartTime();
+error Launchpeg__InvalidPhases();
 error Launchpeg__IsNotInTheConsumerList();
 error Launchpeg__LargerCollectionSizeNeeded();
 error Launchpeg__MaxSupplyForDevReached();
@@ -38,9 +36,6 @@ error Launchpeg__MaxSupplyReached();
 error Launchpeg__NotEligibleForAllowlistMint();
 error Launchpeg__NotEnoughAVAX(uint256 avaxSent);
 error Launchpeg__NotInitialized();
-error Launchpeg__PreMintBeforeAuction();
-error Launchpeg__PublicSaleBeforeAllowlist();
-error Launchpeg__PublicSaleEndBeforePublicSaleStart();
 error Launchpeg__RevealNextBatchNotAvailable();
 error Launchpeg__TransferFailed();
 error Launchpeg__Unauthorized();
@@ -65,3 +60,6 @@ error SafeAccessControlEnumerableUpgradeable__RoleIsDefaultAdmin();
 // SafePausableUpgradeable
 error SafePausableUpgradeable__AlreadyPaused();
 error SafePausableUpgradeable__AlreadyUnpaused();
+
+// OperatorFilterer
+error OperatorNotAllowed(address operator);
