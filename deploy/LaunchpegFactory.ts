@@ -11,7 +11,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const launchpegAddress = (await deployments.get('Launchpeg')).address
   const flatLaunchpegAddress = (await deployments.get('FlatLaunchpeg')).address
   const batchRevealAddress = (await deployments.get('BatchReveal')).address
-  const feePercent = 500
+  const feePercent = 750
   const feeCollector = deployer
 
   const proxyOwner = getProxyOwner(chainId)
