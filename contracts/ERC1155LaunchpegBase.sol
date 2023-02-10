@@ -1,19 +1,23 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.4;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC1155/ERC1155Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/common/ERC2981Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "operator-filter-registry/src/IOperatorFilterRegistry.sol";
+import {ERC1155Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC1155/ERC1155Upgradeable.sol";
+import {ERC2981Upgradeable} from "@openzeppelin/contracts-upgradeable/token/common/ERC2981Upgradeable.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import {StringsUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
+import {IOperatorFilterRegistry} from "operator-filter-registry/src/IOperatorFilterRegistry.sol";
 
-import "./utils/SafeAccessControlEnumerableUpgradeable.sol";
+import {SafeAccessControlEnumerableUpgradeable, AccessControlEnumerableUpgradeable} from "./utils/SafeAccessControlEnumerableUpgradeable.sol";
+import "./LaunchpegErrors.sol";
 
-contract ERC1155LaunchpegBase is
+abstract contract ERC1155LaunchpegBase is
     ERC1155Upgradeable,
     ERC2981Upgradeable,
     ReentrancyGuardUpgradeable,
     SafeAccessControlEnumerableUpgradeable
 {
+    using StringsUpgradeable for uint256;
+
     /// @notice Percentage base point
     uint256 private constant BASIS_POINT_PRECISION = 10_000;
 
@@ -36,6 +40,10 @@ contract ERC1155LaunchpegBase is
 
     /// @notice Start time when funds can be withdrawn
     uint256 public withdrawAVAXStartTime;
+
+    string public name;
+
+    string public symbol;
 
     /// @dev Emitted on updateOperatorFilterRegistryAddress()
     /// @param operatorFilterRegistry New operator filter registry
@@ -61,6 +69,10 @@ contract ERC1155LaunchpegBase is
     /// @param fee Amount of AVAX paid to the fee collector
     event AvaxWithdraw(address indexed sender, uint256 amount, uint256 fee);
 
+    /// @dev Emitted on setURI()
+    /// @param uri The new base URI
+    event URISet(string uri);
+
     /// @notice Allow spending tokens from addresses with balance
     /// Note that this still allows listings and marketplaces with escrow to transfer tokens if transferred
     /// from an EOA.
@@ -77,17 +89,15 @@ contract ERC1155LaunchpegBase is
         _;
     }
 
-    constructor() {
-        _disableInitializers();
-    }
-
-    function initialize(
+    function __ERC1155LaunchpegBase_init(
         address owner,
         address projectOwner,
         address royaltyReceiver,
-        string memory uri
-    ) external initializer {
-        __ERC1155_init(uri);
+        string memory initialUri,
+        string memory collectionName,
+        string memory collectionSymbol
+    ) internal onlyInitializing {
+        __ERC1155_init(initialUri);
         __ERC2981_init();
         __ReentrancyGuard_init();
         __SafeAccessControlEnumerable_init();
@@ -111,8 +121,15 @@ contract ERC1155LaunchpegBase is
 
         withdrawAVAXStartTime = block.timestamp + 7 days;
 
+        name = collectionName;
+        symbol = collectionSymbol;
+
         grantRole(PROJECT_OWNER_ROLE, projectOwner);
         _transferOwnership(owner);
+    }
+
+    function uri(uint256 tokenId) public view override returns (string memory) {
+        return string(abi.encodePacked(super.uri(tokenId), tokenId.toString()));
     }
 
     function supportsInterface(
@@ -132,6 +149,15 @@ contract ERC1155LaunchpegBase is
             ERC1155Upgradeable.supportsInterface(interfaceId) ||
             ERC2981Upgradeable.supportsInterface(interfaceId) ||
             AccessControlEnumerableUpgradeable.supportsInterface(interfaceId);
+    }
+
+    /// @notice Set the base URI
+    /// @dev This sets the URI for revealed tokens
+    /// Only callable by project owner
+    /// @param newURI Base URI to be set
+    function setURI(string calldata newURI) external onlyOwner {
+        _setURI(newURI);
+        emit URISet(newURI);
     }
 
     /// @notice Set the royalty fee
@@ -259,5 +285,19 @@ contract ERC1155LaunchpegBase is
         joeFeePercent = newJoeFeePercent;
         joeFeeCollector = newJoeFeeCollector;
         emit JoeFeeInitialized(newJoeFeePercent, newJoeFeeCollector);
+    }
+
+    /// @dev Verifies that enough AVAX has been sent by the sender and refunds the extra tokens if any
+    /// @param price The price paid by the sender for minting NFTs
+    function _refundIfOver(uint256 price) internal {
+        if (msg.value < price) {
+            revert Launchpeg__NotEnoughAVAX(msg.value);
+        }
+        if (msg.value > price) {
+            (bool success, ) = msg.sender.call{value: msg.value - price}("");
+            if (!success) {
+                revert Launchpeg__TransferFailed();
+            }
+        }
     }
 }
