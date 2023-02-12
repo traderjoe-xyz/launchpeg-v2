@@ -19,10 +19,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     await contract.initialize(
       deployer,
       deployer,
-      deployer,
       'ipfs://bafybeievehyetoezu5nhhjgyadlszdig2puspoopqfjypivm7nisj7zxdq/',
       10,
       0,
+      1676502000,
+      1676509200,
+      1676516400,
       'Test 1155 Single Token',
       'T1155ST'
     )

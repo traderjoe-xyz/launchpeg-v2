@@ -22,7 +22,7 @@ abstract contract ERC1155LaunchpegBase is
     uint256 private constant BASIS_POINT_PRECISION = 10_000;
 
     /// @notice Role granted to project owners
-    bytes32 private constant PROJECT_OWNER_ROLE =
+    bytes32 internal constant PROJECT_OWNER_ROLE =
         keccak256("PROJECT_OWNER_ROLE");
 
     /**
@@ -91,7 +91,6 @@ abstract contract ERC1155LaunchpegBase is
 
     function __ERC1155LaunchpegBase_init(
         address owner,
-        address projectOwner,
         address royaltyReceiver,
         string memory initialUri,
         string memory collectionName,
@@ -124,7 +123,7 @@ abstract contract ERC1155LaunchpegBase is
         name = collectionName;
         symbol = collectionSymbol;
 
-        grantRole(PROJECT_OWNER_ROLE, projectOwner);
+        grantRole(PROJECT_OWNER_ROLE, royaltyReceiver);
         _transferOwnership(owner);
     }
 
