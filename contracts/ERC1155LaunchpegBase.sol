@@ -222,7 +222,7 @@ abstract contract ERC1155LaunchpegBase is
         address to
     ) external onlyOwnerOrRole(PROJECT_OWNER_ROLE) nonReentrant {
         if (
-            withdrawAVAXStartTime > block.timestamp ||
+            block.timestamp < withdrawAVAXStartTime ||
             withdrawAVAXStartTime == 0
         ) {
             revert Launchpeg__WithdrawAVAXNotAvailable();

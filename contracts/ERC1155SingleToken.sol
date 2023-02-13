@@ -16,6 +16,9 @@ contract ERC1155SingleToken is ERC1155LaunchpegBase {
     uint256 public publicSaleStartTime;
     uint256 public publicSaleEndTime;
 
+    uint256 public amountForDevs;
+    uint256 public amountForPreMint;
+
     uint256 public amountMintedByDevs;
     uint256 public amountMintedDuringPreMint;
     uint256 public amountClaimedDuringPreMint;
@@ -39,6 +42,12 @@ contract ERC1155SingleToken is ERC1155LaunchpegBase {
     event PreMintStartTimeSet(uint256 preMintStartTime);
     event PublicSaleStartTimeSet(uint256 publicSaleStartTime);
     event PublicSaleEndTimeSet(uint256 publicSaleEndTime);
+    event AmountForDevsSet(uint256 amountForDevs);
+    event AmountForPreMintSet(uint256 amountForPreMint);
+    event PreMintPriceSet(uint256 preMintPrice);
+    event PublicSalePriceSet(uint256 publicSalePrice);
+    event MaxPerAddressDuringMintSet(uint256 maxPerAddressDuringMint);
+    event MaxSupplySet(uint256 maxSupply);
 
     constructor() {
         // _disableInitializers();
@@ -50,6 +59,8 @@ contract ERC1155SingleToken is ERC1155LaunchpegBase {
         uint256 initialJoeFeePercent,
         string memory uri,
         uint256 initialMaxSupply,
+        uint256 initialAmountForDevs,
+        uint256 initialAmountForPreMint,
         uint256 initialMaxPerAddressDuringMint,
         string memory collectionName,
         string memory collectionSymbol
@@ -65,6 +76,9 @@ contract ERC1155SingleToken is ERC1155LaunchpegBase {
 
         maxSupply = initialMaxSupply;
         maxPerAddressDuringMint = initialMaxPerAddressDuringMint;
+
+        amountForDevs = initialAmountForDevs;
+        amountForPreMint = initialAmountForPreMint;
     }
 
     function initializePhases(
@@ -123,19 +137,41 @@ contract ERC1155SingleToken is ERC1155LaunchpegBase {
         return Phase.Ended;
     }
 
+    function userPendingPreMints(address user) public view returns (uint256) {
+        uint256 userIndex = _pendingPreMints.indexes[user];
+
+        if (userIndex == 0) {
+            return 0;
+        }
+        return _pendingPreMints.preMintDataArr[userIndex - 1].quantity;
+    }
+
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view override returns (bool) {
+        return super.supportsInterface(interfaceId);
+    }
+
+    function amountOfUsersWaitingForPremint() public view returns (uint256) {
+        return _pendingPreMints.preMintDataArr.length;
+    }
+
     function devMint(
         uint256 amount
-    ) external onlyOwnerOrRole(PROJECT_OWNER_ROLE) {
-        amountMintedByDevs = amountMintedByDevs + amount;
+    ) external onlyOwnerOrRole(PROJECT_OWNER_ROLE) nonReentrant {
+        uint256 amountAlreadyMinted = amountMintedByDevs;
+
+        if (amountAlreadyMinted + amount > amountForDevs)
+            revert Launchpeg__MaxSupplyForDevReached();
+
+        amountMintedByDevs = amountAlreadyMinted + amount;
+
         _mint(msg.sender, 0, amount, "");
     }
 
-    function preMint(uint96 amount) external payable {
-        require(
-            block.timestamp >= preMintStartTime,
-            "preMint: Premint has not started yet"
-        );
-
+    function preMint(
+        uint96 amount
+    ) external payable atPhase(Phase.PreMint) nonReentrant {
         PreMintDataSet storage pmDataSet = _pendingPreMints;
         uint256 userIndex = pmDataSet.indexes[msg.sender];
 
@@ -156,7 +192,7 @@ contract ERC1155SingleToken is ERC1155LaunchpegBase {
         _refundIfOver(preMintPrice * amount);
     }
 
-    function claimPremint() external {
+    function claimPremint() external nonReentrant {
         require(
             block.timestamp >= publicSaleStartTime,
             "preMint: Premint has not started yet"
@@ -187,7 +223,7 @@ contract ERC1155SingleToken is ERC1155LaunchpegBase {
         amountClaimedDuringPreMint += preMintQuantity;
     }
 
-    function batchClaimPreMint(uint256 numberOfClaims) external {
+    function batchClaimPreMint(uint256 numberOfClaims) external nonReentrant {
         uint256 initialRemainingPreMints = _pendingPreMints
             .preMintDataArr
             .length;
@@ -223,24 +259,12 @@ contract ERC1155SingleToken is ERC1155LaunchpegBase {
         }
     }
 
-    function publicSaleMint(uint256 amount) external payable {
-        require(
-            block.timestamp <= publicSaleStartTime ||
-                block.timestamp >= publicSaleEndTime,
-            "preMint: Premint has not started yet"
-        );
-
+    function publicSaleMint(
+        uint256 amount
+    ) external payable atPhase(Phase.PublicSale) nonReentrant {
+        amountMintedDuringPublicSale += amount;
         _mint(msg.sender, 0, amount, "");
         _refundIfOver(publicSalePrice * amount);
-    }
-
-    function userPendingPreMints(address user) public view returns (uint256) {
-        uint256 userIndex = _pendingPreMints.indexes[user];
-
-        if (userIndex == 0) {
-            return 0;
-        }
-        return _pendingPreMints.preMintDataArr[userIndex - 1].quantity;
     }
 
     function seedAllowlist(
@@ -279,9 +303,45 @@ contract ERC1155SingleToken is ERC1155LaunchpegBase {
         emit PublicSaleEndTimeSet(newPublicSaleEndTime);
     }
 
-    function supportsInterface(
-        bytes4 interfaceId
-    ) public view override returns (bool) {
-        return super.supportsInterface(interfaceId);
+    function setAmountForDevs(uint256 newAmountForDevs) external onlyOwner {
+        amountForDevs = newAmountForDevs;
+        emit AmountForDevsSet(newAmountForDevs);
+    }
+
+    function setAmountForPreMint(
+        uint256 newAmountForPreMint
+    ) external onlyOwner {
+        amountForPreMint = newAmountForPreMint;
+        emit AmountForPreMintSet(newAmountForPreMint);
+    }
+
+    function setPreMintPrice(uint256 newPreMintPrice) external onlyOwner {
+        preMintPrice = newPreMintPrice;
+        emit PreMintPriceSet(newPreMintPrice);
+    }
+
+    function setPublicSalePrice(uint256 newPublicSalePrice) external onlyOwner {
+        publicSalePrice = newPublicSalePrice;
+        emit PublicSalePriceSet(newPublicSalePrice);
+    }
+
+    function setMaxSupply(uint256 newMaxSupply) external onlyOwner {
+        maxSupply = newMaxSupply;
+        emit MaxSupplySet(newMaxSupply);
+    }
+
+    function setMaxPerAddressDuringMint(
+        uint256 newMaxAmountPerUser
+    ) external onlyOwner {
+        maxPerAddressDuringMint = newMaxAmountPerUser;
+        emit MaxPerAddressDuringMintSet(newMaxAmountPerUser);
+    }
+
+    function _availableSupply() internal view returns (uint256) {
+        return
+            maxSupply -
+            amountMintedDuringPreMint -
+            amountMintedDuringPublicSale -
+            amountForDevs;
     }
 }
