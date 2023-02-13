@@ -92,9 +92,12 @@ abstract contract ERC1155LaunchpegBase is
     function __ERC1155LaunchpegBase_init(
         address owner,
         address royaltyReceiver,
+        address initialJoeFeeCollector,
+        uint256 initialJoeFeePercent,
         string memory initialUri,
         string memory collectionName,
-        string memory collectionSymbol
+        string memory collectionSymbol,
+        uint256 initialWithdrawAVAXStartTime
     ) internal onlyInitializing {
         __ERC1155_init(initialUri);
         __ERC2981_init();
@@ -118,13 +121,19 @@ abstract contract ERC1155LaunchpegBase is
 
         _updateOperatorFilterRegistryAddress(_operatorFilterRegistry);
 
-        withdrawAVAXStartTime = block.timestamp + 7 days;
+        withdrawAVAXStartTime = initialWithdrawAVAXStartTime;
 
         name = collectionName;
         symbol = collectionSymbol;
 
+        _initializeJoeFee(initialJoeFeePercent, initialJoeFeeCollector);
+
         grantRole(PROJECT_OWNER_ROLE, royaltyReceiver);
         _transferOwnership(owner);
+    }
+
+    function projectOwnerRole() external pure returns (bytes32) {
+        return PROJECT_OWNER_ROLE;
     }
 
     function uri(uint256 tokenId) public view override returns (string memory) {
@@ -159,21 +168,6 @@ abstract contract ERC1155LaunchpegBase is
         emit URISet(newURI);
     }
 
-    /// @notice Set the royalty fee
-    /// @param _receiver Royalty fee collector
-    /// @param _feePercent Royalty fee percent in basis point
-    function setRoyaltyInfo(
-        address _receiver,
-        uint96 _feePercent
-    ) external onlyOwner {
-        // Royalty fees are limited to 25%
-        if (_feePercent > 2_500) {
-            revert Launchpeg__InvalidRoyaltyInfo();
-        }
-        _setDefaultRoyalty(_receiver, _feePercent);
-        emit DefaultRoyaltySet(_receiver, _feePercent);
-    }
-
     /// @notice Set the withdraw AVAX start time.
     /// @param newWithdrawAVAXStartTime New public sale end time
     function setWithdrawAVAXStartTime(
@@ -181,6 +175,28 @@ abstract contract ERC1155LaunchpegBase is
     ) external onlyOwner {
         withdrawAVAXStartTime = newWithdrawAVAXStartTime;
         emit WithdrawAVAXStartTimeSet(newWithdrawAVAXStartTime);
+    }
+
+    function setRoyaltyInfo(
+        address receiver,
+        uint96 feePercent
+    ) external onlyOwner {
+        // Royalty fees are limited to 25%
+        if (feePercent > 2_500) {
+            revert Launchpeg__InvalidRoyaltyInfo();
+        }
+        _setDefaultRoyalty(receiver, feePercent);
+        emit DefaultRoyaltySet(receiver, feePercent);
+    }
+
+    /// @notice Set the operator filter registry address
+    /// @param newOperatorFilterRegistry New operator filter registry
+    function setOperatorFilterRegistryAddress(
+        address newOperatorFilterRegistry
+    ) external onlyOwner {
+        _updateOperatorFilterRegistryAddress(
+            IOperatorFilterRegistry(newOperatorFilterRegistry)
+        );
     }
 
     /// @notice Withdraw AVAX to the given recipient

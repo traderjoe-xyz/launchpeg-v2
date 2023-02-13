@@ -44,6 +44,8 @@ contract ERC1155SingleToken is ERC1155LaunchpegBase {
     function initialize(
         address owner,
         address royaltyReceiver,
+        address initialJoeFeeCollector,
+        uint256 initialJoeFeePercent,
         string memory uri,
         uint256 initialMaxSupply,
         uint256 initialPrice,
@@ -56,9 +58,12 @@ contract ERC1155SingleToken is ERC1155LaunchpegBase {
         __ERC1155LaunchpegBase_init(
             owner,
             royaltyReceiver,
+            initialJoeFeeCollector,
+            initialJoeFeePercent,
             uri,
             collectionName,
-            collectionSymbol
+            collectionSymbol,
+            initialPublicSaleStartTime + 3 days
         );
 
         maxSupply = initialMaxSupply;
