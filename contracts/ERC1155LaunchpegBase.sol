@@ -45,6 +45,15 @@ abstract contract ERC1155LaunchpegBase is
 
     string public symbol;
 
+    enum Phase {
+        NotStarted,
+        DutchAuction,
+        PreMint,
+        Allowlist,
+        PublicSale,
+        Ended
+    }
+
     /// @dev Emitted on updateOperatorFilterRegistryAddress()
     /// @param operatorFilterRegistry New operator filter registry
     event OperatorFilterRegistryUpdated(address operatorFilterRegistry);
@@ -89,15 +98,21 @@ abstract contract ERC1155LaunchpegBase is
         _;
     }
 
+    /// @notice Checks if the current phase matches the required phase
+    modifier atPhase(Phase _phase) {
+        if (currentPhase() != _phase) {
+            revert Launchpeg__WrongPhase();
+        }
+        _;
+    }
+
     function __ERC1155LaunchpegBase_init(
         address owner,
         address royaltyReceiver,
-        address initialJoeFeeCollector,
         uint256 initialJoeFeePercent,
         string memory initialUri,
         string memory collectionName,
-        string memory collectionSymbol,
-        uint256 initialWithdrawAVAXStartTime
+        string memory collectionSymbol
     ) internal onlyInitializing {
         __ERC1155_init(initialUri);
         __ERC2981_init();
@@ -121,12 +136,10 @@ abstract contract ERC1155LaunchpegBase is
 
         _updateOperatorFilterRegistryAddress(_operatorFilterRegistry);
 
-        withdrawAVAXStartTime = initialWithdrawAVAXStartTime;
-
         name = collectionName;
         symbol = collectionSymbol;
 
-        _initializeJoeFee(initialJoeFeePercent, initialJoeFeeCollector);
+        _initializeJoeFee(initialJoeFeePercent, owner);
 
         grantRole(PROJECT_OWNER_ROLE, royaltyReceiver);
         _transferOwnership(owner);
@@ -198,6 +211,10 @@ abstract contract ERC1155LaunchpegBase is
             IOperatorFilterRegistry(newOperatorFilterRegistry)
         );
     }
+
+    /// @notice Returns the current phase
+    /// @return phase Current phase
+    function currentPhase() public view virtual returns (Phase);
 
     /// @notice Withdraw AVAX to the given recipient
     /// @param to Recipient of the earned AVAX

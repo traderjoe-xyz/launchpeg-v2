@@ -6,7 +6,7 @@ import { initializePhasesLaunchpeg, getDefaultLaunchpegConfig, Phase, LaunchpegC
 import { advanceTimeAndBlock, latest, duration } from './utils/time'
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers'
 
-describe.only('ERC1155LaunchpegBase', () => {
+describe('ERC1155LaunchpegBase', () => {
   let launchpegBase: Contract
   let config: LaunchpegConfig
 
@@ -26,10 +26,10 @@ describe.only('ERC1155LaunchpegBase', () => {
     await erc1155SingleToken.initialize(
       dev.address,
       royaltyReceiver.address,
-      joeFeeCollector.address,
       testConfig.joeFeePercent,
       testConfig.baseTokenURI,
       testConfig.collectionSize,
+      testConfig.maxPerAddressDuringMint,
       testConfig.flatPublicSalePrice,
       testConfig.preMintStartTime,
       testConfig.publicSaleStartTime,
@@ -70,7 +70,7 @@ describe.only('ERC1155LaunchpegBase', () => {
 
       expect(await launchpegBase.withdrawAVAXStartTime()).to.eq(config.publicSaleStartTime.add(duration.days(3)))
       expect(await launchpegBase.joeFeePercent()).to.eq(config.joeFeePercent)
-      expect(await launchpegBase.joeFeeCollector()).to.eq(joeFeeCollector.address)
+      expect(await launchpegBase.joeFeeCollector()).to.eq(dev.address)
 
       expect(await launchpegBase.operatorFilterRegistry()).to.eq('0x000000000000AAeB6D7670E522A718067333cd4E')
       expect(await launchpegBase.hasRole(await launchpegBase.projectOwnerRole(), royaltyReceiver.address)).to.be.true
@@ -81,10 +81,10 @@ describe.only('ERC1155LaunchpegBase', () => {
         launchpegBase.initialize(
           dev.address,
           royaltyReceiver.address,
-          joeFeeCollector.address,
           config.joeFeePercent,
           config.baseTokenURI,
           config.collectionSize,
+          config.maxPerAddressDuringMint,
           config.flatPublicSalePrice,
           config.preMintStartTime,
           config.publicSaleStartTime,
