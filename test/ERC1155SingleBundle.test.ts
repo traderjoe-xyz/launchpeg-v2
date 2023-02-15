@@ -6,7 +6,7 @@ import { advanceTimeAndBlockToPhase, getDefaultLaunchpegConfig, Phase, Launchpeg
 import { advanceTimeAndBlock, latest, duration } from './utils/time'
 import { loadFixture, mine, reset, time } from '@nomicfoundation/hardhat-network-helpers'
 
-describe.only('ERC1155SingleBundle', () => {
+describe('ERC1155SingleBundle', () => {
   let launchpeg: Contract
   let config: LaunchpegConfig
 
@@ -119,6 +119,22 @@ describe.only('ERC1155SingleBundle', () => {
         )
       ).to.be.revertedWith('Initializable: contract is already initialized')
     })
+
+    it("Implementation contract can't be initialized", async () => {
+      const erc1155SingleBundleCF = await ethers.getContractFactory('ERC1155SingleBundle')
+      const implementation = await erc1155SingleBundleCF.deploy()
+
+      await expect(
+        implementation.initialize(
+          [dev.address, royaltyReceiver.address, config.joeFeePercent, '1155 Single Token', '1155-ST'],
+          config.collectionSize,
+          config.amountForDevs,
+          config.amountForAllowlist,
+          config.maxPerAddressDuringMint,
+          [0]
+        )
+      ).to.be.revertedWith('Initializable: contract is already initialized')
+    })
   })
 
   describe('Dev mint', () => {
@@ -197,6 +213,7 @@ describe.only('ERC1155SingleBundle', () => {
       for (let i = 0; i < tokenSet.length; i++) {
         expect(await launchpeg.balanceOf(alice.address, tokenSet[i])).to.eq(3)
       }
+      expect(await launchpeg.numberMinted(alice.address)).to.eq(3)
     })
 
     it('Should be able to claim all', async () => {
@@ -220,6 +237,10 @@ describe.only('ERC1155SingleBundle', () => {
       for (let i = 0; i < tokenSet.length; i++) {
         expect(await launchpeg.balanceOf(carol.address, tokenSet[i])).to.eq(4)
       }
+
+      expect(await launchpeg.numberMinted(alice.address)).to.eq(3)
+      expect(await launchpeg.numberMinted(bob.address)).to.eq(1)
+      expect(await launchpeg.numberMinted(carol.address)).to.eq(4)
     })
 
     it('Should be able to batch mint a limited amount', async () => {
@@ -261,12 +282,18 @@ describe.only('ERC1155SingleBundle', () => {
 
   describe('Public Sale', () => {
     beforeEach(async () => {
-      await advanceTimeAndBlockToPhase(Phase.PublicSale)
+      await advanceTimeAndBlockToPhase(Phase.PreMint)
+
+      await launchpeg.seedAllowlist([dev.address], [3])
+      await launchpeg.preMint(3, { value: config.flatAllowlistSalePrice.mul(3) })
+
+      await time.increaseTo(config.publicSaleStartTime)
     })
 
     it('Should be able to mint during public sale', async () => {
       await launchpeg.connect(alice).publicSaleMint(2, { value: config.flatPublicSalePrice.mul(2) })
       expect(await launchpeg.amountMintedDuringPublicSale()).to.eq(2)
+      expect(await launchpeg.numberMinted(alice.address)).to.eq(2)
 
       for (let i = 0; i < tokenSet.length; i++) {
         expect(await launchpeg.balanceOf(alice.address, tokenSet[i])).to.eq(2)
@@ -278,6 +305,26 @@ describe.only('ERC1155SingleBundle', () => {
       for (let i = 0; i < tokenSet.length; i++) {
         expect(await launchpeg.balanceOf(bob.address, tokenSet[i])).to.eq(1)
       }
+    })
+
+    it("Can't mint if the contract is paused", async () => {
+      await launchpeg.pause()
+
+      await expect(
+        launchpeg.connect(alice).publicSaleMint(2, { value: config.flatPublicSalePrice.mul(2) })
+      ).to.be.revertedWith('Pausable: paused')
+    })
+
+    it("Can't mint if the collection size is reached", async () => {
+      await launchpeg.setAmountForDevs(2)
+      await launchpeg.setAmountForPreMint(5)
+      await launchpeg.setCollectionSize(10)
+
+      await launchpeg.devMint(2)
+      await launchpeg.connect(alice).publicSaleMint(2, { value: config.flatPublicSalePrice.mul(2) })
+      await expect(
+        launchpeg.connect(bob).publicSaleMint(4, { value: config.flatPublicSalePrice.mul(4) })
+      ).to.be.revertedWith('Launchpeg__MaxSupplyReached')
     })
   })
 

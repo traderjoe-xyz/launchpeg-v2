@@ -4,7 +4,7 @@ import { getDefaultLaunchpegConfig, LaunchpegConfig } from './utils/helpers'
 import { Bytes, ContractFactory, Contract } from 'ethers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 
-describe.only('LaunchpegFactory', () => {
+describe('LaunchpegFactory', () => {
   let launchpegCF: ContractFactory
   let flatLaunchpegCF: ContractFactory
   let erc1155SingleBundleCF: ContractFactory

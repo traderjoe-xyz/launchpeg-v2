@@ -52,7 +52,7 @@ contract ERC1155SingleBundle is
     event PreMintPriceSet(uint256 preMintPrice);
     event PublicSalePriceSet(uint256 publicSalePrice);
     event MaxPerAddressDuringMintSet(uint256 maxPerAddressDuringMint);
-    event MaxSupplySet(uint256 collectionSize);
+    event CollectionSizeSet(uint256 collectionSize);
     event PhaseInitialized(
         uint256 preMintStartTime,
         uint256 publicSaleStartTime,
@@ -184,7 +184,7 @@ contract ERC1155SingleBundle is
 
     function devMint(
         uint256 amount
-    ) external onlyOwnerOrRole(PROJECT_OWNER_ROLE) nonReentrant whenNotPaused {
+    ) external whenNotPaused onlyOwnerOrRole(PROJECT_OWNER_ROLE) nonReentrant {
         uint256 amountAlreadyMinted = amountMintedByDevs;
 
         if (amount > _availableSupply()) {
@@ -307,7 +307,7 @@ contract ERC1155SingleBundle is
 
     function publicSaleMint(
         uint256 amount
-    ) external payable atPhase(Phase.PublicSale) nonReentrant {
+    ) external payable whenNotPaused atPhase(Phase.PublicSale) nonReentrant {
         if (
             numberMinted[msg.sender] +
                 userPendingPreMints(msg.sender) +
@@ -407,17 +407,17 @@ contract ERC1155SingleBundle is
         emit PublicSalePriceSet(newPublicSalePrice);
     }
 
-    function setMaxSupply(uint256 newMaxSupply) external onlyOwner {
+    function setCollectionSize(uint256 newCollectionSize) external onlyOwner {
         if (
-            newMaxSupply < amountForDevs + amountForPreMint ||
-            newMaxSupply <
+            newCollectionSize < amountForDevs + amountForPreMint ||
+            newCollectionSize <
             amountMintedDuringPreMint +
                 amountMintedDuringPublicSale +
                 amountForDevs
         ) revert Launchpeg__LargerCollectionSizeNeeded();
 
-        collectionSize = newMaxSupply;
-        emit MaxSupplySet(newMaxSupply);
+        collectionSize = newCollectionSize;
+        emit CollectionSizeSet(newCollectionSize);
     }
 
     function setMaxPerAddressDuringMint(
