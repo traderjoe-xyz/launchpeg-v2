@@ -278,12 +278,14 @@ describe.only('LaunchpegFactory', () => {
 
       const receipt = await tx.wait()
 
-      const log = receipt.events.find(
-        (e: { event: string }) => e.event === 'ERC1155SingleBundleUpgradeableCreated'
-      ).args
+      const logAdmin = receipt.events.find((e: { event: string }) => e.event === 'ProxyAdminFor1155Created').args
+      const logLaunchpeg = receipt.events.find((e: { event: string }) => e.event === 'ERC1155SingleBundleCreated').args
 
-      const proxyAdmin = await ethers.getContractAt('ProxyAdmin', log.proxyAdmin)
-      const erc1155SingleBundleProxy = await ethers.getContractAt('ERC1155SingleBundle', log.erc1155SingleBundleProxy)
+      const proxyAdmin = await ethers.getContractAt('ProxyAdmin', logAdmin.proxyAdmin)
+      const erc1155SingleBundleProxy = await ethers.getContractAt(
+        'ERC1155SingleBundle',
+        logLaunchpeg.erc1155SingleBundle
+      )
 
       expect(await proxyAdmin.owner()).to.eq(dev.address)
       expect(await erc1155SingleBundleProxy.owner()).to.eq(dev.address)

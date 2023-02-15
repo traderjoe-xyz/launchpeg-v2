@@ -3,8 +3,12 @@ pragma solidity ^0.8.4;
 
 import "./LaunchpegErrors.sol";
 import {ERC1155LaunchpegBase} from "./ERC1155LaunchpegBase.sol";
+import {IERC1155LaunchpegSingleBundle} from "./interfaces/IERC1155LaunchpegSingleBundle.sol";
 
-contract ERC1155SingleBundle is ERC1155LaunchpegBase {
+contract ERC1155SingleBundle is
+    IERC1155LaunchpegSingleBundle,
+    ERC1155LaunchpegBase
+{
     struct PreMintData {
         address sender;
         uint96 quantity;
@@ -34,6 +38,7 @@ contract ERC1155SingleBundle is ERC1155LaunchpegBase {
     uint256 public amountMintedDuringPublicSale;
 
     mapping(address => uint256) public allowlist;
+    mapping(address => uint256) public numberMinted;
 
     uint256[] private _tokenSet;
     PreMintDataSet private _pendingPreMints;
@@ -48,6 +53,17 @@ contract ERC1155SingleBundle is ERC1155LaunchpegBase {
     event PublicSalePriceSet(uint256 publicSalePrice);
     event MaxPerAddressDuringMintSet(uint256 maxPerAddressDuringMint);
     event MaxSupplySet(uint256 maxSupply);
+    event PhaseInitialized(
+        uint256 preMintStartTime,
+        uint256 publicSaleStartTime,
+        uint256 publicSaleEndTime,
+        uint256 preMintPrice,
+        uint256 salePrice,
+        uint256 withdrawAVAXStartTime
+    );
+    event DevMint(address indexed sender, uint256 quantity);
+    event PreMint(address indexed sender, uint256 quantity, uint256 price);
+    event TokenSetUpdated(uint256[] tokenSet);
 
     constructor() {
         _disableInitializers();
@@ -62,6 +78,10 @@ contract ERC1155SingleBundle is ERC1155LaunchpegBase {
         uint256[] calldata initialTokenSet
     ) external initializer {
         __ERC1155LaunchpegBase_init(initData);
+
+        if (amountForDevs + amountForPreMint > maxSupply) {
+            revert Launchpeg__LargerCollectionSizeNeeded();
+        }
 
         maxSupply = initialMaxSupply;
         maxPerAddressDuringMint = initialMaxPerAddressDuringMint;
@@ -98,6 +118,15 @@ contract ERC1155SingleBundle is ERC1155LaunchpegBase {
         publicSaleEndTime = initialPublicSaleEndTime;
 
         withdrawAVAXStartTime = initialPublicSaleStartTime + 3 days;
+
+        emit PhaseInitialized(
+            preMintStartTime,
+            publicSaleStartTime,
+            publicSaleEndTime,
+            initialPreMintPrice,
+            initialPublicSalePrice,
+            initialPublicSaleStartTime + 3 days
+        );
     }
 
     function tokenSet() external view returns (uint256[] memory) {
@@ -113,7 +142,7 @@ contract ERC1155SingleBundle is ERC1155LaunchpegBase {
         ) {
             return Phase.NotStarted;
         } else if (
-            amountMintedDuringPreMint + amountMintedDuringPublicSale >=
+            amountMintedDuringPreMint + amountMintedDuringPublicSale ==
             maxSupply
         ) {
             return Phase.Ended;
@@ -135,19 +164,22 @@ contract ERC1155SingleBundle is ERC1155LaunchpegBase {
         return _pendingPreMints.preMintDataArr.length;
     }
 
-    function userPendingPreMints(address user) external view returns (uint256) {
+    function userPendingPreMints(address user) public view returns (uint256) {
         uint256 userIndex = _pendingPreMints.indexes[user];
 
         if (userIndex == 0) {
             return 0;
         }
+
         return _pendingPreMints.preMintDataArr[userIndex - 1].quantity;
     }
 
     function supportsInterface(
         bytes4 interfaceId
     ) public view override returns (bool) {
-        return super.supportsInterface(interfaceId);
+        return
+            interfaceId == type(IERC1155LaunchpegSingleBundle).interfaceId ||
+            super.supportsInterface(interfaceId);
     }
 
     function devMint(
@@ -155,17 +187,36 @@ contract ERC1155SingleBundle is ERC1155LaunchpegBase {
     ) external onlyOwnerOrRole(PROJECT_OWNER_ROLE) nonReentrant {
         uint256 amountAlreadyMinted = amountMintedByDevs;
 
+        if (amount > _availableSupply()) {
+            revert Launchpeg__MaxSupplyReached();
+        }
+
         if (amountAlreadyMinted + amount > amountForDevs)
             revert Launchpeg__MaxSupplyForDevReached();
 
         amountMintedByDevs = amountAlreadyMinted + amount;
 
         _mint(msg.sender, amount);
+
+        emit DevMint(msg.sender, amount);
     }
 
     function preMint(
         uint96 amount
     ) external payable atPhase(Phase.PreMint) nonReentrant {
+        uint256 amountAlreadyPreMinted = amountMintedDuringPreMint;
+        uint256 userAllowlistAmount = allowlist[msg.sender];
+
+        if (amount == 0) {
+            revert Launchpeg__InvalidQuantity();
+        }
+        if (amount > userAllowlistAmount) {
+            revert Launchpeg__NotEligibleForAllowlistMint();
+        }
+        if (amountAlreadyPreMinted + amount > amountForPreMint) {
+            revert Launchpeg__MaxSupplyReached();
+        }
+
         PreMintDataSet storage pmDataSet = _pendingPreMints;
         uint256 userIndex = pmDataSet.indexes[msg.sender];
 
@@ -180,25 +231,28 @@ contract ERC1155SingleBundle is ERC1155LaunchpegBase {
             pmDataSet.indexes[msg.sender] = pmDataSet.preMintDataArr.length;
         }
 
-        amountMintedDuringPreMint += amount;
+        amountMintedDuringPreMint = amountAlreadyPreMinted + amount;
+        allowlist[msg.sender] = userAllowlistAmount - amount;
 
-        allowlist[msg.sender] -= amount;
         _refundIfOver(preMintPrice * amount);
+
+        emit PreMint(msg.sender, amount, preMintPrice * amount);
     }
 
     function claimPremint() external nonReentrant {
-        require(
-            block.timestamp >= publicSaleStartTime,
-            "preMint: Premint has not started yet"
-        );
+        if (block.timestamp < preMintStartTime) {
+            revert Launchpeg__WrongPhase();
+        }
 
         PreMintDataSet storage pmDataSet = _pendingPreMints;
 
-        uint256 userIndex = pmDataSet.indexes[msg.sender];
         uint96 preMintQuantity;
-        if (userIndex != 0) {
+        uint256 userIndex = pmDataSet.indexes[msg.sender];
+
+        if (userIndex != 0)
             preMintQuantity = pmDataSet.preMintDataArr[userIndex - 1].quantity;
 
+        if (preMintQuantity != 0) {
             uint256 lastIndex = pmDataSet.preMintDataArr.length - 1;
             if (lastIndex != userIndex - 1) {
                 PreMintData memory lastPreMintData = pmDataSet.preMintDataArr[
@@ -210,11 +264,12 @@ contract ERC1155SingleBundle is ERC1155LaunchpegBase {
             pmDataSet.preMintDataArr.pop();
             delete pmDataSet.indexes[msg.sender];
         } else {
-            revert("no pre-minted tokens");
+            revert Launchpeg__InvalidClaim();
         }
 
-        _mint(msg.sender, preMintQuantity);
         amountClaimedDuringPreMint += preMintQuantity;
+
+        _mint(msg.sender, preMintQuantity);
     }
 
     function batchClaimPreMint(uint256 numberOfClaims) external nonReentrant {
@@ -231,32 +286,41 @@ contract ERC1155SingleBundle is ERC1155LaunchpegBase {
             ];
 
             delete _pendingPreMints.indexes[preMintData.sender];
+
             tokenPreMinted += preMintData.quantity;
-
-            _mint(preMintData.sender, preMintData.quantity);
-
             remainingPreMints--;
             numberOfClaims--;
+
+            _mint(preMintData.sender, preMintData.quantity);
         }
 
-        uint256 amountPreMinted = initialRemainingPreMints - remainingPreMints;
         amountClaimedDuringPreMint += tokenPreMinted;
 
-        PreMintData[] storage preMintDataArr = _pendingPreMints.preMintDataArr;
-
         // Removing the pre-minted tokens from the array all at once
+        PreMintData[] storage preMintDataArr = _pendingPreMints.preMintDataArr;
         assembly {
-            sstore(
-                preMintDataArr.slot,
-                sub(initialRemainingPreMints, amountPreMinted)
-            )
+            sstore(preMintDataArr.slot, remainingPreMints)
         }
     }
 
     function publicSaleMint(
         uint256 amount
     ) external payable atPhase(Phase.PublicSale) nonReentrant {
+        if (
+            numberMinted[msg.sender] +
+                userPendingPreMints(msg.sender) +
+                amount >
+            maxPerAddressDuringMint
+        ) {
+            revert Launchpeg__CanNotMintThisMany();
+        }
+
+        if (amount > _availableSupply()) {
+            revert Launchpeg__MaxSupplyReached();
+        }
+
         amountMintedDuringPublicSale += amount;
+
         _mint(msg.sender, amount);
         _refundIfOver(publicSalePrice * amount);
     }
@@ -265,6 +329,7 @@ contract ERC1155SingleBundle is ERC1155LaunchpegBase {
         uint256[] calldata newTokenSet
     ) external onlyOwner atPhase(Phase.NotStarted) {
         _tokenSet = newTokenSet;
+        emit TokenSetUpdated(newTokenSet);
     }
 
     function seedAllowlist(
@@ -285,6 +350,9 @@ contract ERC1155SingleBundle is ERC1155LaunchpegBase {
     function setPreMintStartTime(
         uint256 newPreMintStartTime
     ) external onlyOwner {
+        if (newPreMintStartTime > publicSaleStartTime)
+            revert Launchpeg__InvalidPhases();
+
         preMintStartTime = newPreMintStartTime;
         emit PreMintStartTimeSet(newPreMintStartTime);
     }
@@ -292,6 +360,9 @@ contract ERC1155SingleBundle is ERC1155LaunchpegBase {
     function setPublicSaleStartTime(
         uint256 newPublicSaleStartTime
     ) external onlyOwner {
+        if (newPublicSaleStartTime > publicSaleEndTime)
+            revert Launchpeg__InvalidPhases();
+
         publicSaleStartTime = newPublicSaleStartTime;
         emit PublicSaleStartTimeSet(newPublicSaleStartTime);
     }
@@ -299,6 +370,9 @@ contract ERC1155SingleBundle is ERC1155LaunchpegBase {
     function setPublicSaleEndTime(
         uint256 newPublicSaleEndTime
     ) external onlyOwner {
+        if (newPublicSaleEndTime < publicSaleStartTime)
+            revert Launchpeg__InvalidPhases();
+
         publicSaleEndTime = newPublicSaleEndTime;
         emit PublicSaleEndTimeSet(newPublicSaleEndTime);
     }
@@ -316,16 +390,30 @@ contract ERC1155SingleBundle is ERC1155LaunchpegBase {
     }
 
     function setPreMintPrice(uint256 newPreMintPrice) external onlyOwner {
+        if (newPreMintPrice > publicSalePrice)
+            revert Launchpeg__InvalidAllowlistPrice();
+
         preMintPrice = newPreMintPrice;
         emit PreMintPriceSet(newPreMintPrice);
     }
 
     function setPublicSalePrice(uint256 newPublicSalePrice) external onlyOwner {
+        if (newPublicSalePrice < preMintPrice)
+            revert Launchpeg__InvalidAllowlistPrice();
+
         publicSalePrice = newPublicSalePrice;
         emit PublicSalePriceSet(newPublicSalePrice);
     }
 
     function setMaxSupply(uint256 newMaxSupply) external onlyOwner {
+        if (
+            newMaxSupply < amountForDevs + amountForPreMint ||
+            newMaxSupply <
+            amountMintedDuringPreMint +
+                amountMintedDuringPublicSale +
+                amountForDevs
+        ) revert Launchpeg__LargerCollectionSizeNeeded();
+
         maxSupply = newMaxSupply;
         emit MaxSupplySet(newMaxSupply);
     }
@@ -346,6 +434,8 @@ contract ERC1155SingleBundle is ERC1155LaunchpegBase {
     }
 
     function _mint(address to, uint256 amount) internal {
+        numberMinted[to] += amount;
+
         uint256 tokenAmount = _tokenSet.length;
 
         for (uint i = 0; i < tokenAmount; i++) {

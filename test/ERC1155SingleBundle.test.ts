@@ -285,6 +285,7 @@ describe.only('ERC1155SingleBundle', () => {
     beforeEach(async () => {
       await advanceTimeAndBlockToPhase(Phase.PublicSale)
 
+      await launchpeg.setMaxPerAddressDuringMint(10)
       await launchpeg.connect(alice).publicSaleMint(10, { value: config.flatPublicSalePrice.mul(10) })
     })
 

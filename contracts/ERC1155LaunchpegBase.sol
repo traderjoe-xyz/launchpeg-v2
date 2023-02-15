@@ -10,7 +10,10 @@ import {IOperatorFilterRegistry} from "operator-filter-registry/src/IOperatorFil
 import "./LaunchpegErrors.sol";
 import {SafeAccessControlEnumerableUpgradeable, AccessControlEnumerableUpgradeable} from "./utils/SafeAccessControlEnumerableUpgradeable.sol";
 
+import {IERC1155LaunchpegBase} from "./interfaces/IERC1155LaunchpegBase.sol";
+
 abstract contract ERC1155LaunchpegBase is
+    IERC1155LaunchpegBase,
     ERC1155Upgradeable,
     ERC2981Upgradeable,
     ReentrancyGuardUpgradeable,
@@ -174,6 +177,7 @@ abstract contract ERC1155LaunchpegBase is
         returns (bool)
     {
         return
+            interfaceId == type(IERC1155LaunchpegBase).interfaceId ||
             ERC1155Upgradeable.supportsInterface(interfaceId) ||
             ERC2981Upgradeable.supportsInterface(interfaceId) ||
             AccessControlEnumerableUpgradeable.supportsInterface(interfaceId);

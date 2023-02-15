@@ -52,14 +52,14 @@ contract LaunchpegFactory is
     );
 
     event ERC1155SingleBundleCreated(address indexed erc1155SingleBundle);
-    event ERC1155SingleBundleUpgradeableCreated(
-        address indexed proxyAdmin,
-        address indexed erc1155SingleBundleProxy
-    );
+    event ProxyAdminFor1155Created(address indexed proxyAdmin);
 
     event SetLaunchpegImplementation(address indexed launchpegImplementation);
     event SetFlatLaunchpegImplementation(
         address indexed flatLaunchpegImplementation
+    );
+    event Set1155SingleBundleImplementation(
+        address indexed erc1155SingleBundleImplementation
     );
     event SetBatchReveal(address indexed batchReveal);
     event SetDefaultJoeFeePercent(uint256 joeFeePercent);
@@ -322,10 +322,7 @@ contract LaunchpegFactory is
 
             launchpeg = address(launchpegProxy);
 
-            emit ERC1155SingleBundleUpgradeableCreated(
-                address(proxyAdmin),
-                launchpeg
-            );
+            emit ProxyAdminFor1155Created(address(proxyAdmin));
         } else {
             launchpeg = Clones.clone(erc1155SingleBundleImplementation);
             ERC1155SingleBundle(launchpeg).initialize(
@@ -336,12 +333,12 @@ contract LaunchpegFactory is
                 maxPerAddressDuringMint,
                 tokenSet
             );
-
-            emit ERC1155SingleBundleCreated(launchpeg);
         }
 
         isLaunchpeg[2][launchpeg] = true;
         allLaunchpegs[2].push(launchpeg);
+
+        emit ERC1155SingleBundleCreated(launchpeg);
 
         return launchpeg;
     }
@@ -370,6 +367,19 @@ contract LaunchpegFactory is
 
         flatLaunchpegImplementation = _flatLaunchpegImplementation;
         emit SetFlatLaunchpegImplementation(_flatLaunchpegImplementation);
+    }
+
+    function setERC1155SingleBundle(
+        address _erc1155SingleBundleImplementation
+    ) external onlyOwner {
+        if (_erc1155SingleBundleImplementation == address(0)) {
+            revert LaunchpegFactory__InvalidImplementation();
+        }
+
+        erc1155SingleBundleImplementation = _erc1155SingleBundleImplementation;
+        emit Set1155SingleBundleImplementation(
+            _erc1155SingleBundleImplementation
+        );
     }
 
     /// @notice Set batch reveal address
