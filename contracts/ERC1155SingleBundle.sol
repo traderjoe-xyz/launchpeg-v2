@@ -5,7 +5,7 @@ import "./ERC1155LaunchpegBase.sol";
 
 import "hardhat/console.sol";
 
-contract ERC1155SingleToken is ERC1155LaunchpegBase {
+contract ERC1155SingleBundle is ERC1155LaunchpegBase {
     uint256 public maxSupply;
     uint256 public maxPerAddressDuringMint;
 

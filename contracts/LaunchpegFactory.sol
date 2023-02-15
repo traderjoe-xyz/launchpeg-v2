@@ -11,7 +11,7 @@ import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "./interfaces/IBatchReveal.sol";
 import "./interfaces/IFlatLaunchpeg.sol";
 import "./interfaces/ILaunchpeg.sol";
-import "./ERC1155SingleToken.sol";
+import "./ERC1155SingleBundle.sol";
 import "./interfaces/ILaunchpegFactory.sol";
 import "./interfaces/IPendingOwnableUpgradeable.sol";
 import "./interfaces/ISafePausableUpgradeable.sol";
@@ -51,10 +51,10 @@ contract LaunchpegFactory is
         uint256 amountForAllowlist
     );
 
-    event ERC1155SingleTokenCreated(address indexed erc1155SingleToken);
-    event ERC1155SingleTokenUpgradeableCreated(
+    event ERC1155SingleBundleCreated(address indexed erc1155SingleBundle);
+    event ERC1155SingleBundleUpgradeableCreated(
         address indexed proxyAdmin,
-        address indexed erc1155SingleTokenProxy
+        address indexed erc1155SingleBundleProxy
     );
 
     event SetLaunchpegImplementation(address indexed launchpegImplementation);
@@ -87,20 +87,20 @@ contract LaunchpegFactory is
     /// @notice Batch reveal address
     address public override batchReveal;
 
-    address public erc1155SingleTokenImplementation;
+    address public erc1155SingleBundleImplementation;
 
     /// @notice Initializes the Launchpeg factory
     /// @dev Uses clone factory pattern to save space
     /// @param _launchpegImplementation Launchpeg contract to be cloned
     /// @param _flatLaunchpegImplementation FlatLaunchpeg contract to be cloned
-    /// @param _erc1155SingleTokenImplementation ERC1155SingleToken contract to be cloned
+    /// @param _erc1155SingleBundleImplementation ERC1155SingleBundle contract to be cloned
     /// @param _batchReveal Batch reveal address
     /// @param _joeFeePercent Default fee percentage
     /// @param _joeFeeCollector Default fee collector
     function initialize(
         address _launchpegImplementation,
         address _flatLaunchpegImplementation,
-        address _erc1155SingleTokenImplementation,
+        address _erc1155SingleBundleImplementation,
         address _batchReveal,
         uint256 _joeFeePercent,
         address _joeFeeCollector
@@ -113,7 +113,7 @@ contract LaunchpegFactory is
         if (_flatLaunchpegImplementation == address(0)) {
             revert LaunchpegFactory__InvalidImplementation();
         }
-        if (_erc1155SingleTokenImplementation == address(0)) {
+        if (_erc1155SingleBundleImplementation == address(0)) {
             revert LaunchpegFactory__InvalidImplementation();
         }
         if (_batchReveal == address(0)) {
@@ -128,7 +128,7 @@ contract LaunchpegFactory is
 
         launchpegImplementation = _launchpegImplementation;
         flatLaunchpegImplementation = _flatLaunchpegImplementation;
-        erc1155SingleTokenImplementation = _erc1155SingleTokenImplementation;
+        erc1155SingleBundleImplementation = _erc1155SingleBundleImplementation;
         batchReveal = _batchReveal;
         joeFeePercent = _joeFeePercent;
         joeFeeCollector = _joeFeeCollector;
@@ -302,7 +302,7 @@ contract LaunchpegFactory is
         address launchpeg;
         if (_isUpgradeable) {
             bytes memory data = abi.encodeWithSelector(
-                ERC1155SingleToken.initialize.selector,
+                ERC1155SingleBundle.initialize.selector,
                 initData,
                 collectionSize,
                 amountForDevs,
@@ -313,7 +313,7 @@ contract LaunchpegFactory is
             ProxyAdmin proxyAdmin = new ProxyAdmin();
 
             TransparentUpgradeableProxy launchpegProxy = new TransparentUpgradeableProxy(
-                    erc1155SingleTokenImplementation,
+                    erc1155SingleBundleImplementation,
                     address(proxyAdmin),
                     data
                 );
@@ -322,13 +322,13 @@ contract LaunchpegFactory is
 
             launchpeg = address(launchpegProxy);
 
-            emit ERC1155SingleTokenUpgradeableCreated(
+            emit ERC1155SingleBundleUpgradeableCreated(
                 address(proxyAdmin),
                 launchpeg
             );
         } else {
-            launchpeg = Clones.clone(erc1155SingleTokenImplementation);
-            ERC1155SingleToken(launchpeg).initialize(
+            launchpeg = Clones.clone(erc1155SingleBundleImplementation);
+            ERC1155SingleBundle(launchpeg).initialize(
                 initData,
                 collectionSize,
                 amountForDevs,
@@ -336,7 +336,7 @@ contract LaunchpegFactory is
                 maxPerAddressDuringMint
             );
 
-            emit ERC1155SingleTokenCreated(launchpeg);
+            emit ERC1155SingleBundleCreated(launchpeg);
         }
 
         isLaunchpeg[2][launchpeg] = true;

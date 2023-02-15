@@ -6,7 +6,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deploy } = deployments
   const { deployer } = await getNamedAccounts()
 
-  const deployResult = await deploy('ERC1155SingleToken', {
+  const deployResult = await deploy('ERC1155SingleBundle', {
     from: deployer,
     args: [],
     log: true,
@@ -14,7 +14,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   })
 
   if (deployResult.newlyDeployed) {
-    const contract = await hre.ethers.getContractAt('ERC1155SingleToken', deployResult.address)
+    const contract = await hre.ethers.getContractAt('ERC1155SingleBundle', deployResult.address)
 
     await contract.initialize(
       deployer,
@@ -44,4 +44,4 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 }
 
 export default func
-func.tags = ['ERC1155SingleToken']
+func.tags = ['ERC1155SingleBundle']

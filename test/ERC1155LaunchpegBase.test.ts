@@ -18,12 +18,12 @@ describe('ERC1155LaunchpegBase', () => {
   let joeFeeCollector: SignerWithAddress
 
   const deployContractsFixture = async () => {
-    const erc1155SingleTokenCF = await ethers.getContractFactory('ERC1155SingleToken')
-    const erc1155SingleToken = await erc1155SingleTokenCF.deploy()
+    const erc1155SingleBundleCF = await ethers.getContractFactory('ERC1155SingleBundle')
+    const erc1155SingleBundle = await erc1155SingleBundleCF.deploy()
 
     const testConfig = await getDefaultLaunchpegConfig()
 
-    await erc1155SingleToken.initialize(
+    await erc1155SingleBundle.initialize(
       dev.address,
       royaltyReceiver.address,
       testConfig.joeFeePercent,
@@ -38,7 +38,7 @@ describe('ERC1155LaunchpegBase', () => {
       '1155-ST'
     )
 
-    return { erc1155SingleToken, testConfig }
+    return { erc1155SingleBundle, testConfig }
   }
 
   before(async () => {
@@ -52,8 +52,8 @@ describe('ERC1155LaunchpegBase', () => {
   })
 
   beforeEach(async () => {
-    const { erc1155SingleToken, testConfig } = await loadFixture(deployContractsFixture)
-    launchpegBase = erc1155SingleToken
+    const { erc1155SingleBundle, testConfig } = await loadFixture(deployContractsFixture)
+    launchpegBase = erc1155SingleBundle
     config = testConfig
   })
 

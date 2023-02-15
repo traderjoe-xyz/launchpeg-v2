@@ -6,7 +6,7 @@ import { advanceTimeAndBlockToPhase, getDefaultLaunchpegConfig, Phase, Launchpeg
 import { advanceTimeAndBlock, latest, duration } from './utils/time'
 import { loadFixture, mine, reset, time } from '@nomicfoundation/hardhat-network-helpers'
 
-describe('ERC1155SingleToken', () => {
+describe('ERC1155SingleBundle', () => {
   let launchpeg: Contract
   let config: LaunchpegConfig
 
@@ -18,12 +18,12 @@ describe('ERC1155SingleToken', () => {
   let joeFeeCollector: SignerWithAddress
 
   const deployContractsFixture = async () => {
-    const erc1155SingleTokenCF = await ethers.getContractFactory('ERC1155SingleToken')
-    const erc1155SingleToken = await erc1155SingleTokenCF.deploy()
+    const erc1155SingleBundleCF = await ethers.getContractFactory('ERC1155SingleBundle')
+    const erc1155SingleBundle = await erc1155SingleBundleCF.deploy()
 
     const testConfig = await getDefaultLaunchpegConfig()
 
-    await erc1155SingleToken.initialize(
+    await erc1155SingleBundle.initialize(
       dev.address,
       royaltyReceiver.address,
       testConfig.joeFeePercent,
@@ -36,7 +36,7 @@ describe('ERC1155SingleToken', () => {
       '1155-ST'
     )
 
-    await erc1155SingleToken.initializePhases(
+    await erc1155SingleBundle.initializePhases(
       testConfig.preMintStartTime,
       testConfig.publicSaleStartTime,
       testConfig.publicSaleEndTime,
@@ -44,7 +44,7 @@ describe('ERC1155SingleToken', () => {
       testConfig.flatPublicSalePrice
     )
 
-    return { erc1155SingleToken, testConfig }
+    return { erc1155SingleBundle, testConfig }
   }
 
   before(async () => {
@@ -58,8 +58,8 @@ describe('ERC1155SingleToken', () => {
   })
 
   beforeEach(async () => {
-    const { erc1155SingleToken, testConfig } = await loadFixture(deployContractsFixture)
-    launchpeg = erc1155SingleToken
+    const { erc1155SingleBundle, testConfig } = await loadFixture(deployContractsFixture)
+    launchpeg = erc1155SingleBundle
     config = testConfig
   })
 
