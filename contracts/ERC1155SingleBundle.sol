@@ -184,7 +184,7 @@ contract ERC1155SingleBundle is
 
     function devMint(
         uint256 amount
-    ) external onlyOwnerOrRole(PROJECT_OWNER_ROLE) nonReentrant {
+    ) external onlyOwnerOrRole(PROJECT_OWNER_ROLE) nonReentrant whenNotPaused {
         uint256 amountAlreadyMinted = amountMintedByDevs;
 
         if (amount > _availableSupply()) {
@@ -203,7 +203,7 @@ contract ERC1155SingleBundle is
 
     function preMint(
         uint96 amount
-    ) external payable atPhase(Phase.PreMint) nonReentrant {
+    ) external payable whenNotPaused atPhase(Phase.PreMint) nonReentrant {
         uint256 amountAlreadyPreMinted = amountMintedDuringPreMint;
         uint256 userAllowlistAmount = allowlist[msg.sender];
 
@@ -239,7 +239,7 @@ contract ERC1155SingleBundle is
         emit PreMint(msg.sender, amount, preMintPrice * amount);
     }
 
-    function claimPremint() external nonReentrant {
+    function claimPremint() external whenNotPaused nonReentrant {
         if (block.timestamp < preMintStartTime) {
             revert Launchpeg__WrongPhase();
         }
@@ -272,7 +272,9 @@ contract ERC1155SingleBundle is
         _mint(msg.sender, preMintQuantity);
     }
 
-    function batchClaimPreMint(uint256 numberOfClaims) external nonReentrant {
+    function batchClaimPreMint(
+        uint256 numberOfClaims
+    ) external whenNotPaused nonReentrant {
         uint256 initialRemainingPreMints = _pendingPreMints
             .preMintDataArr
             .length;

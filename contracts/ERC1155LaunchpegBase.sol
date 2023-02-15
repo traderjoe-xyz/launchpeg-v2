@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.4;
 
+import {AccessControlEnumerableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlEnumerableUpgradeable.sol";
 import {ERC1155Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC1155/ERC1155Upgradeable.sol";
 import {ERC2981Upgradeable} from "@openzeppelin/contracts-upgradeable/token/common/ERC2981Upgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
@@ -8,7 +9,7 @@ import {StringsUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/Stri
 import {IOperatorFilterRegistry} from "operator-filter-registry/src/IOperatorFilterRegistry.sol";
 
 import "./LaunchpegErrors.sol";
-import {SafeAccessControlEnumerableUpgradeable, AccessControlEnumerableUpgradeable} from "./utils/SafeAccessControlEnumerableUpgradeable.sol";
+import {SafePausableUpgradeable} from "./utils/SafePausableUpgradeable.sol";
 
 import {IERC1155LaunchpegBase} from "./interfaces/IERC1155LaunchpegBase.sol";
 
@@ -17,7 +18,7 @@ abstract contract ERC1155LaunchpegBase is
     ERC1155Upgradeable,
     ERC2981Upgradeable,
     ReentrancyGuardUpgradeable,
-    SafeAccessControlEnumerableUpgradeable
+    SafePausableUpgradeable
 {
     using StringsUpgradeable for uint256;
 
@@ -170,7 +171,7 @@ abstract contract ERC1155LaunchpegBase is
         view
         virtual
         override(
-            SafeAccessControlEnumerableUpgradeable,
+            SafePausableUpgradeable,
             ERC1155Upgradeable,
             ERC2981Upgradeable
         )
