@@ -63,7 +63,7 @@ contract Launchpeg is BaseLaunchpeg, ILaunchpeg {
     /// @param publicSaleStartTime Public sale start time in seconds
     /// @param publicSaleEndTime Public sale end time in seconds
     /// @param publicSaleDiscountPercent Discount applied to the last auction price during the public sale
-    event Initialized(
+    event PhaseInitialized(
         uint256 auctionSaleStartTime,
         uint256 auctionStartPrice,
         uint256 auctionEndPrice,
@@ -170,7 +170,7 @@ contract Launchpeg is BaseLaunchpeg, ILaunchpeg {
         publicSaleEndTime = _publicSaleEndTime;
         publicSaleDiscountPercent = _publicSaleDiscountPercent;
 
-        emit Initialized(
+        emit PhaseInitialized(
             auctionSaleStartTime,
             auctionStartPrice,
             auctionEndPrice,
@@ -188,7 +188,9 @@ contract Launchpeg is BaseLaunchpeg, ILaunchpeg {
     /// have been initialized.
     /// @dev Only callable by owner
     /// @param _auctionSaleStartTime New auction sale start time
-    function setAuctionSaleStartTime(uint256 _auctionSaleStartTime)
+    function setAuctionSaleStartTime(
+        uint256 _auctionSaleStartTime
+    )
         external
         override
         onlyOwner
@@ -206,7 +208,9 @@ contract Launchpeg is BaseLaunchpeg, ILaunchpeg {
     /// have been initialized.
     /// @dev Only callable by owner
     /// @param _preMintStartTime New pre-mint start time
-    function setPreMintStartTime(uint256 _preMintStartTime)
+    function setPreMintStartTime(
+        uint256 _preMintStartTime
+    )
         external
         override
         onlyOwner
@@ -227,13 +231,9 @@ contract Launchpeg is BaseLaunchpeg, ILaunchpeg {
     /// @notice Mint NFTs during the dutch auction
     /// @dev The price decreases every `auctionDropInterval` by `auctionDropPerStep`
     /// @param _quantity Quantity of NFTs to buy
-    function auctionMint(uint256 _quantity)
-        external
-        payable
-        override
-        whenNotPaused
-        atPhase(Phase.DutchAuction)
-    {
+    function auctionMint(
+        uint256 _quantity
+    ) external payable override whenNotPaused atPhase(Phase.DutchAuction) {
         // use numberMinted() since pre-mint starts after auction
         if (numberMinted(msg.sender) + _quantity > maxPerAddressDuringMint) {
             revert Launchpeg__CanNotMintThisMany();
@@ -258,12 +258,9 @@ contract Launchpeg is BaseLaunchpeg, ILaunchpeg {
     /// @notice Returns the current price of the dutch auction
     /// @param _saleStartTime Auction sale start time
     /// @return auctionSalePrice Auction sale price
-    function getAuctionPrice(uint256 _saleStartTime)
-        public
-        view
-        override
-        returns (uint256)
-    {
+    function getAuctionPrice(
+        uint256 _saleStartTime
+    ) public view override returns (uint256) {
         if (block.timestamp < _saleStartTime) {
             return auctionStartPrice;
         }
@@ -326,7 +323,9 @@ contract Launchpeg is BaseLaunchpeg, ILaunchpeg {
     /// This function call must use less than 30 000 gas.
     /// @param _interfaceId InterfaceId to consider. Comes from type(InterfaceContract).interfaceId
     /// @return isInterfaceSupported True if the considered interface is supported
-    function supportsInterface(bytes4 _interfaceId)
+    function supportsInterface(
+        bytes4 _interfaceId
+    )
         public
         view
         virtual
