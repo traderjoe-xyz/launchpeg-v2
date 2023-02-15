@@ -106,21 +106,25 @@ abstract contract ERC1155LaunchpegBase is
         _;
     }
 
+    struct InitData {
+        address owner;
+        address royaltyReceiver;
+        uint256 joeFeePercent;
+        string uri;
+        string collectionName;
+        string collectionSymbol;
+    }
+
     function __ERC1155LaunchpegBase_init(
-        address owner,
-        address royaltyReceiver,
-        uint256 initialJoeFeePercent,
-        string memory initialUri,
-        string memory collectionName,
-        string memory collectionSymbol
+        InitData calldata initData
     ) internal onlyInitializing {
-        __ERC1155_init(initialUri);
+        __ERC1155_init(initData.uri);
         __ERC2981_init();
         __ReentrancyGuard_init();
         __SafeAccessControlEnumerable_init();
 
         // Default royalty is 5%
-        _setDefaultRoyalty(royaltyReceiver, 500);
+        _setDefaultRoyalty(initData.royaltyReceiver, 500);
 
         // Initialize the operator filter registry and subscribe to OpenSea's list
         IOperatorFilterRegistry _operatorFilterRegistry = IOperatorFilterRegistry(
@@ -136,13 +140,13 @@ abstract contract ERC1155LaunchpegBase is
 
         _updateOperatorFilterRegistryAddress(_operatorFilterRegistry);
 
-        name = collectionName;
-        symbol = collectionSymbol;
+        name = initData.collectionName;
+        symbol = initData.collectionSymbol;
 
-        _initializeJoeFee(initialJoeFeePercent, owner);
+        _initializeJoeFee(initData.joeFeePercent, initData.owner);
 
-        grantRole(PROJECT_OWNER_ROLE, royaltyReceiver);
-        _transferOwnership(owner);
+        grantRole(PROJECT_OWNER_ROLE, initData.royaltyReceiver);
+        _transferOwnership(initData.owner);
     }
 
     function projectOwnerRole() external pure returns (bytes32) {

@@ -6,10 +6,12 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
 import "./interfaces/IBatchReveal.sol";
 import "./interfaces/IFlatLaunchpeg.sol";
 import "./interfaces/ILaunchpeg.sol";
+import "./ERC1155SingleToken.sol";
 import "./interfaces/ILaunchpegFactory.sol";
 import "./interfaces/IPendingOwnableUpgradeable.sol";
 import "./interfaces/ISafePausableUpgradeable.sol";
@@ -49,6 +51,12 @@ contract LaunchpegFactory is
         uint256 amountForAllowlist
     );
 
+    event ERC1155SingleTokenCreated(address indexed erc1155SingleToken);
+    event ERC1155SingleTokenUpgradeableCreated(
+        address indexed proxyAdmin,
+        address indexed erc1155SingleTokenProxy
+    );
+
     event SetLaunchpegImplementation(address indexed launchpegImplementation);
     event SetFlatLaunchpegImplementation(
         address indexed flatLaunchpegImplementation
@@ -79,16 +87,20 @@ contract LaunchpegFactory is
     /// @notice Batch reveal address
     address public override batchReveal;
 
+    address public erc1155SingleTokenImplementation;
+
     /// @notice Initializes the Launchpeg factory
     /// @dev Uses clone factory pattern to save space
     /// @param _launchpegImplementation Launchpeg contract to be cloned
     /// @param _flatLaunchpegImplementation FlatLaunchpeg contract to be cloned
+    /// @param _erc1155SingleTokenImplementation ERC1155SingleToken contract to be cloned
     /// @param _batchReveal Batch reveal address
     /// @param _joeFeePercent Default fee percentage
     /// @param _joeFeeCollector Default fee collector
     function initialize(
         address _launchpegImplementation,
         address _flatLaunchpegImplementation,
+        address _erc1155SingleTokenImplementation,
         address _batchReveal,
         uint256 _joeFeePercent,
         address _joeFeeCollector
@@ -99,6 +111,9 @@ contract LaunchpegFactory is
             revert LaunchpegFactory__InvalidImplementation();
         }
         if (_flatLaunchpegImplementation == address(0)) {
+            revert LaunchpegFactory__InvalidImplementation();
+        }
+        if (_erc1155SingleTokenImplementation == address(0)) {
             revert LaunchpegFactory__InvalidImplementation();
         }
         if (_batchReveal == address(0)) {
@@ -113,6 +128,7 @@ contract LaunchpegFactory is
 
         launchpegImplementation = _launchpegImplementation;
         flatLaunchpegImplementation = _flatLaunchpegImplementation;
+        erc1155SingleTokenImplementation = _erc1155SingleTokenImplementation;
         batchReveal = _batchReveal;
         joeFeePercent = _joeFeePercent;
         joeFeeCollector = _joeFeeCollector;
@@ -121,12 +137,9 @@ contract LaunchpegFactory is
     /// @notice Returns the number of Launchpegs
     /// @param _launchpegType Type of Launchpeg to consider
     /// @return LaunchpegNumber The number of Launchpegs ever created
-    function numLaunchpegs(uint256 _launchpegType)
-        external
-        view
-        override
-        returns (uint256)
-    {
+    function numLaunchpegs(
+        uint256 _launchpegType
+    ) external view override returns (uint256) {
         return allLaunchpegs[_launchpegType].length;
     }
 
@@ -264,13 +277,79 @@ contract LaunchpegFactory is
         return flatLaunchpeg;
     }
 
+    function create1155SingleToken(
+        string calldata name,
+        string calldata symbol,
+        address royaltyReceiver,
+        uint256 maxPerAddressDuringMint,
+        uint256 collectionSize,
+        uint256 amountForDevs,
+        uint256 amountForPreMint,
+        string calldata uri,
+        bool _isUpgradeable
+    ) external onlyOwner returns (address) {
+        // Packing data to avoid stack too deep error
+        ERC1155LaunchpegBase.InitData memory initData = ERC1155LaunchpegBase
+            .InitData({
+                owner: msg.sender,
+                collectionName: name,
+                collectionSymbol: symbol,
+                royaltyReceiver: royaltyReceiver,
+                joeFeePercent: joeFeePercent,
+                uri: uri
+            });
+
+        address launchpeg;
+        if (_isUpgradeable) {
+            bytes memory data = abi.encodeWithSelector(
+                ERC1155SingleToken.initialize.selector,
+                initData,
+                collectionSize,
+                amountForDevs,
+                amountForPreMint,
+                maxPerAddressDuringMint
+            );
+
+            ProxyAdmin proxyAdmin = new ProxyAdmin();
+
+            TransparentUpgradeableProxy launchpegProxy = new TransparentUpgradeableProxy(
+                    erc1155SingleTokenImplementation,
+                    address(proxyAdmin),
+                    data
+                );
+
+            proxyAdmin.transferOwnership(msg.sender);
+
+            launchpeg = address(launchpegProxy);
+
+            emit ERC1155SingleTokenUpgradeableCreated(
+                address(proxyAdmin),
+                launchpeg
+            );
+        } else {
+            launchpeg = Clones.clone(erc1155SingleTokenImplementation);
+            ERC1155SingleToken(launchpeg).initialize(
+                initData,
+                collectionSize,
+                amountForDevs,
+                amountForPreMint,
+                maxPerAddressDuringMint
+            );
+
+            emit ERC1155SingleTokenCreated(launchpeg);
+        }
+
+        isLaunchpeg[2][launchpeg] = true;
+        allLaunchpegs[2].push(launchpeg);
+
+        return launchpeg;
+    }
+
     /// @notice Set address for launchpegImplementation
     /// @param _launchpegImplementation New launchpegImplementation
-    function setLaunchpegImplementation(address _launchpegImplementation)
-        external
-        override
-        onlyOwner
-    {
+    function setLaunchpegImplementation(
+        address _launchpegImplementation
+    ) external override onlyOwner {
         if (_launchpegImplementation == address(0)) {
             revert LaunchpegFactory__InvalidImplementation();
         }
@@ -305,11 +384,9 @@ contract LaunchpegFactory is
 
     /// @notice Set percentage of protocol fees
     /// @param _joeFeePercent New joeFeePercent
-    function setDefaultJoeFeePercent(uint256 _joeFeePercent)
-        external
-        override
-        onlyOwner
-    {
+    function setDefaultJoeFeePercent(
+        uint256 _joeFeePercent
+    ) external override onlyOwner {
         if (_joeFeePercent > 10_000) {
             revert Launchpeg__InvalidPercent();
         }
@@ -320,11 +397,9 @@ contract LaunchpegFactory is
 
     /// @notice Set default address to collect protocol fees
     /// @param _joeFeeCollector New collector address
-    function setDefaultJoeFeeCollector(address _joeFeeCollector)
-        external
-        override
-        onlyOwner
-    {
+    function setDefaultJoeFeeCollector(
+        address _joeFeeCollector
+    ) external override onlyOwner {
         if (_joeFeeCollector == address(0)) {
             revert Launchpeg__InvalidJoeFeeCollector();
         }
@@ -343,20 +418,15 @@ contract LaunchpegFactory is
     /// @notice Revokes LAUNCHPEG_PAUSER_ROLE from an address. The
     /// address will not be able to pause any Launchpeg collection
     /// @param _pauser Pauser address
-    function removeLaunchpegPauser(address _pauser)
-        external
-        override
-    {
+    function removeLaunchpegPauser(address _pauser) external override {
         revokeRole(LAUNCHPEG_PAUSER_ROLE, _pauser);
     }
 
     /// @notice Pause specified Launchpeg
     /// @param _launchpeg Launchpeg address
-    function pauseLaunchpeg(address _launchpeg)
-        external
-        override
-        onlyOwnerOrRole(LAUNCHPEG_PAUSER_ROLE)
-    {
+    function pauseLaunchpeg(
+        address _launchpeg
+    ) external override onlyOwnerOrRole(LAUNCHPEG_PAUSER_ROLE) {
         ISafePausableUpgradeable(_launchpeg).pause();
     }
 }

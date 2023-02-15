@@ -7,11 +7,13 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 describe('LaunchpegFactory', () => {
   let launchpegCF: ContractFactory
   let flatLaunchpegCF: ContractFactory
+  let erc1155SingleTokenCF: ContractFactory
   let launchpegFactoryCF: ContractFactory
   let batchRevealCF: ContractFactory
 
   let launchpeg: Contract
   let flatLaunchpeg: Contract
+  let erc1155SingleToken: Contract
   let launchpegFactory: Contract
   let batchReveal: Contract
 
@@ -30,6 +32,7 @@ describe('LaunchpegFactory', () => {
   before(async () => {
     launchpegCF = await ethers.getContractFactory('Launchpeg')
     flatLaunchpegCF = await ethers.getContractFactory('FlatLaunchpeg')
+    erc1155SingleTokenCF = await ethers.getContractFactory('ERC1155SingleToken')
     launchpegFactoryCF = await ethers.getContractFactory('LaunchpegFactory')
     batchRevealCF = await ethers.getContractFactory('BatchReveal')
 
@@ -56,6 +59,7 @@ describe('LaunchpegFactory', () => {
     await deployBatchReveal()
     await deployLaunchpeg()
     await deployFlatLaunchpeg()
+    await deploy1155SingleToken()
   })
 
   const deployBatchReveal = async () => {
@@ -99,10 +103,15 @@ describe('LaunchpegFactory', () => {
     )
   }
 
+  const deploy1155SingleToken = async () => {
+    erc1155SingleToken = await erc1155SingleTokenCF.deploy()
+  }
+
   const deployLaunchpegFactory = async () => {
     launchpegFactory = await upgrades.deployProxy(launchpegFactoryCF, [
       launchpeg.address,
       flatLaunchpeg.address,
+      erc1155SingleToken.address,
       batchReveal.address,
       config.joeFeePercent,
       royaltyReceiver.address,
@@ -214,6 +223,64 @@ describe('LaunchpegFactory', () => {
       expect(await launchpegFactory.numLaunchpegs(1)).to.equal(1)
       const launchpegAddress = await launchpegFactory.allLaunchpegs(1, 0)
       expect(await launchpegFactory.isLaunchpeg(1, launchpegAddress)).to.equal(true)
+    })
+
+    it('Should create ERC1155SingleToken as well', async () => {
+      expect(await launchpegFactory.numLaunchpegs(2)).to.equal(0)
+
+      await launchpegFactory.create1155SingleToken(
+        'JoePEG',
+        'JOEPEG',
+        royaltyReceiver.address,
+        config.maxPerAddressDuringMint,
+        config.collectionSize,
+        config.amountForDevs,
+        config.amountForAllowlist,
+        'ipfs://{cid}/',
+        false
+      )
+
+      expect(await launchpegFactory.numLaunchpegs(2)).to.equal(1)
+      const launchpegAddress = await launchpegFactory.allLaunchpegs(2, 0)
+      expect(await launchpegFactory.isLaunchpeg(2, launchpegAddress)).to.equal(true)
+    })
+
+    it('Should correctly setup upgradeable ERC1155SingleToken', async () => {
+      expect(await launchpegFactory.numLaunchpegs(2)).to.equal(0)
+
+      const tx = await launchpegFactory.create1155SingleToken(
+        'JoePEG',
+        'JOEPEG',
+        royaltyReceiver.address,
+        config.maxPerAddressDuringMint,
+        config.collectionSize,
+        config.amountForDevs,
+        config.amountForAllowlist,
+        'ipfs://{cid}/',
+        true
+      )
+
+      const receipt = await tx.wait()
+
+      const log = receipt.events.find((e: { event: string }) => e.event === 'ERC1155SingleTokenUpgradeableCreated').args
+
+      const proxyAdmin = await ethers.getContractAt('ProxyAdmin', log.proxyAdmin)
+      const erc1155SingleTokenProxy = await ethers.getContractAt('ERC1155SingleToken', log.erc1155SingleTokenProxy)
+
+      expect(await proxyAdmin.owner()).to.eq(dev.address)
+      expect(await erc1155SingleTokenProxy.owner()).to.eq(dev.address)
+      expect(await proxyAdmin.getProxyImplementation(erc1155SingleTokenProxy.address)).to.eq(erc1155SingleToken.address)
+      expect(await proxyAdmin.getProxyAdmin(erc1155SingleTokenProxy.address)).to.eq(proxyAdmin.address)
+
+      // Checks that the proxy is correctly initialized
+      expect(await erc1155SingleTokenProxy.name()).to.eq('JoePEG')
+
+      // Test to see if the proxy can be upgraded
+      const newImplementation = await erc1155SingleTokenCF.deploy()
+      await proxyAdmin.upgrade(erc1155SingleTokenProxy.address, newImplementation.address)
+
+      expect(await proxyAdmin.getProxyImplementation(erc1155SingleTokenProxy.address)).to.eq(newImplementation.address)
+      expect(await erc1155SingleTokenProxy.name()).to.eq('JoePEG')
     })
 
     it('Should not initialize batch reveal if disabled', async () => {

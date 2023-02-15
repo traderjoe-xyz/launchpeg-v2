@@ -54,25 +54,13 @@ contract ERC1155SingleToken is ERC1155LaunchpegBase {
     }
 
     function initialize(
-        address owner,
-        address royaltyReceiver,
-        uint256 initialJoeFeePercent,
-        string memory uri,
+        InitData calldata initData,
         uint256 initialMaxSupply,
         uint256 initialAmountForDevs,
         uint256 initialAmountForPreMint,
-        uint256 initialMaxPerAddressDuringMint,
-        string memory collectionName,
-        string memory collectionSymbol
+        uint256 initialMaxPerAddressDuringMint
     ) external initializer {
-        __ERC1155LaunchpegBase_init(
-            owner,
-            royaltyReceiver,
-            initialJoeFeePercent,
-            uri,
-            collectionName,
-            collectionSymbol
-        );
+        __ERC1155LaunchpegBase_init(initData);
 
         maxSupply = initialMaxSupply;
         maxPerAddressDuringMint = initialMaxPerAddressDuringMint;

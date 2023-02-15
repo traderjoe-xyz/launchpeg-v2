@@ -6,7 +6,7 @@ import { advanceTimeAndBlockToPhase, getDefaultLaunchpegConfig, Phase, Launchpeg
 import { advanceTimeAndBlock, latest, duration } from './utils/time'
 import { loadFixture, mine, reset, time } from '@nomicfoundation/hardhat-network-helpers'
 
-describe.only('ERC1155SingleToken', () => {
+describe('ERC1155SingleToken', () => {
   let launchpeg: Contract
   let config: LaunchpegConfig
 
