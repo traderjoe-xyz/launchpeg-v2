@@ -51,7 +51,7 @@ contract ERC1155SingleBundle is ERC1155LaunchpegBase {
     event MaxSupplySet(uint256 maxSupply);
 
     constructor() {
-        // _disableInitializers();
+        _disableInitializers();
     }
 
     function initialize(
