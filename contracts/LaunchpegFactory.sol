@@ -1,22 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.4;
 
-import "@openzeppelin/contracts-upgradeable/access/IAccessControlUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts/proxy/Clones.sol";
-import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
+import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
+import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
-import "./interfaces/IBatchReveal.sol";
-import "./interfaces/IFlatLaunchpeg.sol";
-import "./interfaces/ILaunchpeg.sol";
-import "./ERC1155SingleBundle.sol";
-import "./interfaces/ILaunchpegFactory.sol";
-import "./interfaces/IPendingOwnableUpgradeable.sol";
-import "./interfaces/ISafePausableUpgradeable.sol";
-import "./utils/SafeAccessControlEnumerableUpgradeable.sol";
 import "./LaunchpegErrors.sol";
+import {IBatchReveal} from "./interfaces/IBatchReveal.sol";
+import {IBaseLaunchpeg} from "./interfaces/IBaseLaunchpeg.sol";
+import {IFlatLaunchpeg} from "./interfaces/IFlatLaunchpeg.sol";
+import {ILaunchpeg} from "./interfaces/ILaunchpeg.sol";
+import {ERC1155LaunchpegBase} from "./ERC1155LaunchpegBase.sol";
+import {ERC1155SingleBundle} from "./ERC1155SingleBundle.sol";
+import {ILaunchpegFactory} from "./interfaces/ILaunchpegFactory.sol";
+import {IPendingOwnableUpgradeable} from "./interfaces/IPendingOwnableUpgradeable.sol";
+import {ISafePausableUpgradeable} from "./interfaces/ISafePausableUpgradeable.sol";
+import {SafeAccessControlEnumerableUpgradeable} from "./utils/SafeAccessControlEnumerableUpgradeable.sol";
 
 /// @title Launchpeg Factory
 /// @author Trader Joe

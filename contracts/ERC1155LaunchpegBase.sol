@@ -7,8 +7,8 @@ import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/se
 import {StringsUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 import {IOperatorFilterRegistry} from "operator-filter-registry/src/IOperatorFilterRegistry.sol";
 
-import {SafeAccessControlEnumerableUpgradeable, AccessControlEnumerableUpgradeable} from "./utils/SafeAccessControlEnumerableUpgradeable.sol";
 import "./LaunchpegErrors.sol";
+import {SafeAccessControlEnumerableUpgradeable, AccessControlEnumerableUpgradeable} from "./utils/SafeAccessControlEnumerableUpgradeable.sol";
 
 abstract contract ERC1155LaunchpegBase is
     ERC1155Upgradeable,
@@ -44,6 +44,14 @@ abstract contract ERC1155LaunchpegBase is
     string public name;
 
     string public symbol;
+
+    struct InitData {
+        address owner;
+        address royaltyReceiver;
+        uint256 joeFeePercent;
+        string collectionName;
+        string collectionSymbol;
+    }
 
     enum Phase {
         NotStarted,
@@ -106,14 +114,6 @@ abstract contract ERC1155LaunchpegBase is
         _;
     }
 
-    struct InitData {
-        address owner;
-        address royaltyReceiver;
-        uint256 joeFeePercent;
-        string collectionName;
-        string collectionSymbol;
-    }
-
     function __ERC1155LaunchpegBase_init(
         InitData calldata initData
     ) internal onlyInitializing {
@@ -147,6 +147,10 @@ abstract contract ERC1155LaunchpegBase is
         grantRole(PROJECT_OWNER_ROLE, initData.royaltyReceiver);
         _transferOwnership(initData.owner);
     }
+
+    /// @notice Returns the current phase
+    /// @return phase Current phase
+    function currentPhase() public view virtual returns (Phase);
 
     function projectOwnerRole() external pure returns (bytes32) {
         return PROJECT_OWNER_ROLE;
@@ -215,10 +219,6 @@ abstract contract ERC1155LaunchpegBase is
         );
     }
 
-    /// @notice Returns the current phase
-    /// @return phase Current phase
-    function currentPhase() public view virtual returns (Phase);
-
     /// @notice Withdraw AVAX to the given recipient
     /// @param to Recipient of the earned AVAX
     function withdrawAVAX(
@@ -280,6 +280,24 @@ abstract contract ERC1155LaunchpegBase is
         super.safeBatchTransferFrom(from, to, ids, amounts, data);
     }
 
+    /// @notice Initialize the sales fee percent taken by Joepegs and address that collects the fees
+    /// @param newJoeFeePercent The fees collected by Joepegs on the sale benefits
+    /// @param newJoeFeeCollector The address to which the fees on the sale will be sent
+    function _initializeJoeFee(
+        uint256 newJoeFeePercent,
+        address newJoeFeeCollector
+    ) internal {
+        if (newJoeFeePercent > BASIS_POINT_PRECISION) {
+            revert Launchpeg__InvalidPercent();
+        }
+        if (newJoeFeeCollector == address(0)) {
+            revert Launchpeg__InvalidJoeFeeCollector();
+        }
+        joeFeePercent = newJoeFeePercent;
+        joeFeeCollector = newJoeFeeCollector;
+        emit JoeFeeInitialized(newJoeFeePercent, newJoeFeeCollector);
+    }
+
     /**
      * @dev Update the address that the contract will make OperatorFilter checks against. When set to the zero
      * address, checks will be bypassed.
@@ -302,24 +320,6 @@ abstract contract ERC1155LaunchpegBase is
                 revert OperatorNotAllowed(operator);
             }
         }
-    }
-
-    /// @notice Initialize the sales fee percent taken by Joepegs and address that collects the fees
-    /// @param newJoeFeePercent The fees collected by Joepegs on the sale benefits
-    /// @param newJoeFeeCollector The address to which the fees on the sale will be sent
-    function _initializeJoeFee(
-        uint256 newJoeFeePercent,
-        address newJoeFeeCollector
-    ) internal {
-        if (newJoeFeePercent > BASIS_POINT_PRECISION) {
-            revert Launchpeg__InvalidPercent();
-        }
-        if (newJoeFeeCollector == address(0)) {
-            revert Launchpeg__InvalidJoeFeeCollector();
-        }
-        joeFeePercent = newJoeFeePercent;
-        joeFeeCollector = newJoeFeeCollector;
-        emit JoeFeeInitialized(newJoeFeePercent, newJoeFeeCollector);
     }
 
     /// @dev Verifies that enough AVAX has been sent by the sender and refunds the extra tokens if any

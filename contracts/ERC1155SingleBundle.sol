@@ -1,11 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.4;
 
-import "./ERC1155LaunchpegBase.sol";
-
-import "hardhat/console.sol";
+import "./LaunchpegErrors.sol";
+import {ERC1155LaunchpegBase} from "./ERC1155LaunchpegBase.sol";
 
 contract ERC1155SingleBundle is ERC1155LaunchpegBase {
+    struct PreMintData {
+        address sender;
+        uint96 quantity;
+    }
+
+    struct PreMintDataSet {
+        PreMintData[] preMintDataArr;
+        mapping(address => uint256) indexes;
+    }
+
     uint256 public maxSupply;
     uint256 public maxPerAddressDuringMint;
 
@@ -25,18 +34,8 @@ contract ERC1155SingleBundle is ERC1155LaunchpegBase {
     uint256 public amountMintedDuringPublicSale;
 
     mapping(address => uint256) public allowlist;
+
     uint256[] private _tokenSet;
-
-    struct PreMintData {
-        address sender;
-        uint96 quantity;
-    }
-
-    struct PreMintDataSet {
-        PreMintData[] preMintDataArr;
-        mapping(address => uint256) indexes;
-    }
-
     PreMintDataSet private _pendingPreMints;
 
     event AllowlistSeeded();
@@ -101,6 +100,10 @@ contract ERC1155SingleBundle is ERC1155LaunchpegBase {
         withdrawAVAXStartTime = initialPublicSaleStartTime + 3 days;
     }
 
+    function tokenSet() external view returns (uint256[] memory) {
+        return _tokenSet;
+    }
+
     function currentPhase() public view override returns (Phase) {
         if (
             preMintStartTime == 0 ||
@@ -128,14 +131,8 @@ contract ERC1155SingleBundle is ERC1155LaunchpegBase {
         return Phase.Ended;
     }
 
-    function tokenSet() external view returns (uint256[] memory) {
-        return _tokenSet;
-    }
-
-    function updateTokenSet(
-        uint256[] calldata newTokenSet
-    ) external onlyOwner atPhase(Phase.NotStarted) {
-        _tokenSet = newTokenSet;
+    function amountOfUsersWaitingForPremint() external view returns (uint256) {
+        return _pendingPreMints.preMintDataArr.length;
     }
 
     function userPendingPreMints(address user) external view returns (uint256) {
@@ -153,10 +150,6 @@ contract ERC1155SingleBundle is ERC1155LaunchpegBase {
         return super.supportsInterface(interfaceId);
     }
 
-    function amountOfUsersWaitingForPremint() external view returns (uint256) {
-        return _pendingPreMints.preMintDataArr.length;
-    }
-
     function devMint(
         uint256 amount
     ) external onlyOwnerOrRole(PROJECT_OWNER_ROLE) nonReentrant {
@@ -168,14 +161,6 @@ contract ERC1155SingleBundle is ERC1155LaunchpegBase {
         amountMintedByDevs = amountAlreadyMinted + amount;
 
         _mint(msg.sender, amount);
-    }
-
-    function _mint(address to, uint256 amount) internal {
-        uint256 tokenAmount = _tokenSet.length;
-
-        for (uint i = 0; i < tokenAmount; i++) {
-            _mint(to, _tokenSet[i], amount, "");
-        }
     }
 
     function preMint(
@@ -276,6 +261,12 @@ contract ERC1155SingleBundle is ERC1155LaunchpegBase {
         _refundIfOver(publicSalePrice * amount);
     }
 
+    function updateTokenSet(
+        uint256[] calldata newTokenSet
+    ) external onlyOwner atPhase(Phase.NotStarted) {
+        _tokenSet = newTokenSet;
+    }
+
     function seedAllowlist(
         address[] calldata addresses,
         uint256[] calldata amounts
@@ -352,5 +343,13 @@ contract ERC1155SingleBundle is ERC1155LaunchpegBase {
             amountMintedDuringPreMint -
             amountMintedDuringPublicSale -
             amountForDevs;
+    }
+
+    function _mint(address to, uint256 amount) internal {
+        uint256 tokenAmount = _tokenSet.length;
+
+        for (uint i = 0; i < tokenAmount; i++) {
+            _mint(to, _tokenSet[i], amount, "");
+        }
     }
 }
