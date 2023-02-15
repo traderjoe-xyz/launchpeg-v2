@@ -19,7 +19,7 @@ contract ERC1155SingleBundle is
         mapping(address => uint256) indexes;
     }
 
-    uint256 public maxSupply;
+    uint256 public collectionSize;
     uint256 public maxPerAddressDuringMint;
 
     uint256 public preMintPrice;
@@ -52,7 +52,7 @@ contract ERC1155SingleBundle is
     event PreMintPriceSet(uint256 preMintPrice);
     event PublicSalePriceSet(uint256 publicSalePrice);
     event MaxPerAddressDuringMintSet(uint256 maxPerAddressDuringMint);
-    event MaxSupplySet(uint256 maxSupply);
+    event MaxSupplySet(uint256 collectionSize);
     event PhaseInitialized(
         uint256 preMintStartTime,
         uint256 publicSaleStartTime,
@@ -79,11 +79,11 @@ contract ERC1155SingleBundle is
     ) external initializer {
         __ERC1155LaunchpegBase_init(initData);
 
-        if (amountForDevs + amountForPreMint > maxSupply) {
+        if (amountForDevs + amountForPreMint > collectionSize) {
             revert Launchpeg__LargerCollectionSizeNeeded();
         }
 
-        maxSupply = initialMaxSupply;
+        collectionSize = initialMaxSupply;
         maxPerAddressDuringMint = initialMaxPerAddressDuringMint;
 
         amountForDevs = initialAmountForDevs;
@@ -143,7 +143,7 @@ contract ERC1155SingleBundle is
             return Phase.NotStarted;
         } else if (
             amountMintedDuringPreMint + amountMintedDuringPublicSale ==
-            maxSupply
+            collectionSize
         ) {
             return Phase.Ended;
         } else if (
@@ -416,7 +416,7 @@ contract ERC1155SingleBundle is
                 amountForDevs
         ) revert Launchpeg__LargerCollectionSizeNeeded();
 
-        maxSupply = newMaxSupply;
+        collectionSize = newMaxSupply;
         emit MaxSupplySet(newMaxSupply);
     }
 
@@ -429,7 +429,7 @@ contract ERC1155SingleBundle is
 
     function _availableSupply() internal view returns (uint256) {
         return
-            maxSupply -
+            collectionSize -
             amountMintedDuringPreMint -
             amountMintedDuringPublicSale -
             amountForDevs;

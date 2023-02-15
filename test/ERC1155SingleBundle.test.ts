@@ -83,7 +83,7 @@ describe.only('ERC1155SingleBundle', () => {
 
   describe('Initialize Contract', () => {
     it('Should be correctly initialized', async () => {
-      expect(await launchpeg.maxSupply()).to.eq(config.collectionSize)
+      expect(await launchpeg.collectionSize()).to.eq(config.collectionSize)
       expect(await launchpeg.amountForDevs()).to.eq(config.amountForDevs)
       expect(await launchpeg.amountForPreMint()).to.eq(config.amountForAllowlist)
       expect(await launchpeg.maxPerAddressDuringMint()).to.eq(config.maxPerAddressDuringMint)
