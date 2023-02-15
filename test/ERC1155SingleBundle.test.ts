@@ -17,6 +17,8 @@ describe.only('ERC1155SingleBundle', () => {
   let royaltyReceiver: SignerWithAddress
   let joeFeeCollector: SignerWithAddress
 
+  const tokenSet = [1, 2, 3]
+
   const deployContractsFixture = async () => {
     const launchpegFactoryCF = await ethers.getContractFactory('LaunchpegFactory')
     const erc1155SingleBundleCF = await ethers.getContractFactory('ERC1155SingleBundle')
@@ -43,7 +45,7 @@ describe.only('ERC1155SingleBundle', () => {
       testConfig.collectionSize,
       testConfig.amountForDevs,
       testConfig.amountForAllowlist,
-      [0],
+      tokenSet,
       false
     )
 
@@ -97,6 +99,12 @@ describe.only('ERC1155SingleBundle', () => {
       expect(await launchpeg.preMintStartTime()).to.eq(config.preMintStartTime)
       expect(await launchpeg.publicSaleStartTime()).to.eq(config.publicSaleStartTime)
       expect(await launchpeg.publicSaleEndTime()).to.eq(config.publicSaleEndTime)
+
+      const contractTokenSet = await launchpeg.tokenSet()
+      expect(contractTokenSet.length).to.eq(tokenSet.length)
+      for (let i = 0; i < tokenSet.length; i++) {
+        expect(contractTokenSet[i]).to.eq(tokenSet[i])
+      }
     })
 
     it("Can't be initialized twice", async () => {
@@ -118,7 +126,10 @@ describe.only('ERC1155SingleBundle', () => {
       await launchpeg.devMint(config.amountForDevs)
 
       expect(await launchpeg.amountMintedByDevs()).to.eq(config.amountForDevs)
-      expect(await launchpeg.balanceOf(dev.address, 0)).to.eq(config.amountForDevs)
+
+      for (let i = 0; i < tokenSet.length; i++) {
+        expect(await launchpeg.balanceOf(dev.address, tokenSet[i])).to.eq(config.amountForDevs)
+      }
     })
 
     it('Dev should not be able to mint more than their allocation', async () => {
@@ -136,7 +147,9 @@ describe.only('ERC1155SingleBundle', () => {
       await launchpeg.connect(alice).devMint(config.amountForDevs)
 
       expect(await launchpeg.amountMintedByDevs()).to.eq(config.amountForDevs)
-      expect(await launchpeg.balanceOf(alice.address, 0)).to.eq(config.amountForDevs)
+      for (let i = 0; i < tokenSet.length; i++) {
+        expect(await launchpeg.balanceOf(alice.address, tokenSet[i])).to.eq(config.amountForDevs)
+      }
     })
   })
 
@@ -181,7 +194,9 @@ describe.only('ERC1155SingleBundle', () => {
       expect(await launchpeg.userPendingPreMints(alice.address)).to.eq(0)
       expect(await launchpeg.amountClaimedDuringPreMint()).to.eq(3)
       expect(await launchpeg.amountOfUsersWaitingForPremint()).to.eq(2)
-      expect(await launchpeg.balanceOf(alice.address, 0)).to.eq(3)
+      for (let i = 0; i < tokenSet.length; i++) {
+        expect(await launchpeg.balanceOf(alice.address, tokenSet[i])).to.eq(3)
+      }
     })
 
     it('Should be able to claim all', async () => {
@@ -193,9 +208,18 @@ describe.only('ERC1155SingleBundle', () => {
 
       expect(await launchpeg.amountClaimedDuringPreMint()).to.eq(8)
       expect(await launchpeg.amountOfUsersWaitingForPremint()).to.eq(0)
-      expect(await launchpeg.balanceOf(alice.address, 0)).to.eq(3)
-      expect(await launchpeg.balanceOf(bob.address, 0)).to.eq(1)
-      expect(await launchpeg.balanceOf(carol.address, 0)).to.eq(4)
+
+      for (let i = 0; i < tokenSet.length; i++) {
+        expect(await launchpeg.balanceOf(alice.address, tokenSet[i])).to.eq(3)
+      }
+
+      for (let i = 0; i < tokenSet.length; i++) {
+        expect(await launchpeg.balanceOf(bob.address, tokenSet[i])).to.eq(1)
+      }
+
+      for (let i = 0; i < tokenSet.length; i++) {
+        expect(await launchpeg.balanceOf(carol.address, tokenSet[i])).to.eq(4)
+      }
     })
 
     it('Should be able to batch mint a limited amount', async () => {
@@ -205,8 +229,13 @@ describe.only('ERC1155SingleBundle', () => {
       expect(await launchpeg.userPendingPreMints(carol.address)).to.eq(0)
       expect(await launchpeg.amountClaimedDuringPreMint()).to.eq(5)
       expect(await launchpeg.amountOfUsersWaitingForPremint()).to.eq(1)
-      expect(await launchpeg.balanceOf(bob.address, 0)).to.eq(1)
-      expect(await launchpeg.balanceOf(carol.address, 0)).to.eq(4)
+
+      for (let i = 0; i < tokenSet.length; i++) {
+        expect(await launchpeg.balanceOf(bob.address, tokenSet[i])).to.eq(1)
+      }
+      for (let i = 0; i < tokenSet.length; i++) {
+        expect(await launchpeg.balanceOf(carol.address, tokenSet[i])).to.eq(4)
+      }
 
       expect(await launchpeg.userPendingPreMints(alice.address)).to.eq(3)
     })
@@ -238,11 +267,17 @@ describe.only('ERC1155SingleBundle', () => {
     it('Should be able to mint during public sale', async () => {
       await launchpeg.connect(alice).publicSaleMint(2, { value: config.flatPublicSalePrice.mul(2) })
       expect(await launchpeg.amountMintedDuringPublicSale()).to.eq(2)
-      expect(await launchpeg.balanceOf(alice.address, 0)).to.eq(2)
+
+      for (let i = 0; i < tokenSet.length; i++) {
+        expect(await launchpeg.balanceOf(alice.address, tokenSet[i])).to.eq(2)
+      }
 
       await launchpeg.connect(bob).publicSaleMint(1, { value: config.flatPublicSalePrice.mul(1) })
       expect(await launchpeg.amountMintedDuringPublicSale()).to.eq(3)
-      expect(await launchpeg.balanceOf(bob.address, 0)).to.eq(1)
+
+      for (let i = 0; i < tokenSet.length; i++) {
+        expect(await launchpeg.balanceOf(bob.address, tokenSet[i])).to.eq(1)
+      }
     })
   })
 

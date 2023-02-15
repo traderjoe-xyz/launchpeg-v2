@@ -128,7 +128,17 @@ contract ERC1155SingleBundle is ERC1155LaunchpegBase {
         return Phase.Ended;
     }
 
-    function userPendingPreMints(address user) public view returns (uint256) {
+    function tokenSet() external view returns (uint256[] memory) {
+        return _tokenSet;
+    }
+
+    function updateTokenSet(
+        uint256[] calldata newTokenSet
+    ) external onlyOwner atPhase(Phase.NotStarted) {
+        _tokenSet = newTokenSet;
+    }
+
+    function userPendingPreMints(address user) external view returns (uint256) {
         uint256 userIndex = _pendingPreMints.indexes[user];
 
         if (userIndex == 0) {
@@ -143,7 +153,7 @@ contract ERC1155SingleBundle is ERC1155LaunchpegBase {
         return super.supportsInterface(interfaceId);
     }
 
-    function amountOfUsersWaitingForPremint() public view returns (uint256) {
+    function amountOfUsersWaitingForPremint() external view returns (uint256) {
         return _pendingPreMints.preMintDataArr.length;
     }
 
@@ -157,7 +167,15 @@ contract ERC1155SingleBundle is ERC1155LaunchpegBase {
 
         amountMintedByDevs = amountAlreadyMinted + amount;
 
-        _mint(msg.sender, 0, amount, "");
+        _mint(msg.sender, amount);
+    }
+
+    function _mint(address to, uint256 amount) internal {
+        uint256 tokenAmount = _tokenSet.length;
+
+        for (uint i = 0; i < tokenAmount; i++) {
+            _mint(to, _tokenSet[i], amount, "");
+        }
     }
 
     function preMint(
@@ -210,7 +228,7 @@ contract ERC1155SingleBundle is ERC1155LaunchpegBase {
             revert("no pre-minted tokens");
         }
 
-        _mint(msg.sender, 0, preMintQuantity, "");
+        _mint(msg.sender, preMintQuantity);
         amountClaimedDuringPreMint += preMintQuantity;
     }
 
@@ -230,7 +248,7 @@ contract ERC1155SingleBundle is ERC1155LaunchpegBase {
             delete _pendingPreMints.indexes[preMintData.sender];
             tokenPreMinted += preMintData.quantity;
 
-            _mint(preMintData.sender, 0, preMintData.quantity, "");
+            _mint(preMintData.sender, preMintData.quantity);
 
             remainingPreMints--;
             numberOfClaims--;
@@ -254,7 +272,7 @@ contract ERC1155SingleBundle is ERC1155LaunchpegBase {
         uint256 amount
     ) external payable atPhase(Phase.PublicSale) nonReentrant {
         amountMintedDuringPublicSale += amount;
-        _mint(msg.sender, 0, amount, "");
+        _mint(msg.sender, amount);
         _refundIfOver(publicSalePrice * amount);
     }
 
