@@ -10,6 +10,8 @@ import "./interfaces/IBatchReveal.sol";
 import "./interfaces/IFlatLaunchpeg.sol";
 import "./interfaces/ILaunchpeg.sol";
 import "./interfaces/ILaunchpegFactory.sol";
+import "./ERC1155LaunchpegBase.sol";
+import "./ERC1155SingleBundle.sol";
 import "./ERC721AUpgradeable.sol";
 
 error LaunchpegLens__InvalidContract();
@@ -95,6 +97,22 @@ contract LaunchpegLens {
         uint256 launchpegBalanceAVAX;
     }
 
+    struct ERC1155SingleBundleData {
+        uint256[] tokenSet;
+        ILaunchpeg.Phase currentPhase;
+        uint256 amountForPreMint;
+        uint256 amountForDevs;
+        uint256 preMintStartTime;
+        uint256 publicSaleStartTime;
+        uint256 publicSaleEndTime;
+        uint256 preMintPrice;
+        uint256 salePrice;
+        uint256 amountMintedDuringPreMint;
+        uint256 amountClaimedDuringPreMint;
+        uint256 amountMintedDuringAllowlist;
+        uint256 amountMintedDuringPublicSale;
+    }
+
     /// Global struct that is returned by getAllLaunchpegs()
     struct LensData {
         address id;
@@ -105,12 +123,14 @@ contract LaunchpegLens {
         RevealData revealData;
         UserData userData;
         ProjectOwnerData projectOwnerData;
+        ERC1155SingleBundleData erc1155SingleBundleData;
     }
 
     enum LaunchpegType {
         Unknown,
         Launchpeg,
-        FlatLaunchpeg
+        FlatLaunchpeg,
+        ERC1155SingleBundle
     }
 
     enum LaunchpegVersion {
@@ -145,11 +165,9 @@ contract LaunchpegLens {
     /// @notice Gets the type and version of Launchpeg
     /// @param _contract Contract address to consider
     /// @return LaunchpegType Type of Launchpeg implementation (Dutch Auction / Flat / Unknown)
-    function getLaunchpegType(address _contract)
-        public
-        view
-        returns (LaunchpegType, LaunchpegVersion)
-    {
+    function getLaunchpegType(
+        address _contract
+    ) public view returns (LaunchpegType, LaunchpegVersion) {
         if (launchpegFactoryV1.isLaunchpeg(0, _contract)) {
             return (LaunchpegType.Launchpeg, LaunchpegVersion.V1);
         } else if (launchpegFactoryV2.isLaunchpeg(0, _contract)) {
@@ -158,6 +176,8 @@ contract LaunchpegLens {
             return (LaunchpegType.FlatLaunchpeg, LaunchpegVersion.V1);
         } else if (launchpegFactoryV2.isLaunchpeg(1, _contract)) {
             return (LaunchpegType.FlatLaunchpeg, LaunchpegVersion.V2);
+        } else if (launchpegFactoryV2.isLaunchpeg(2, _contract)) {
+            return (LaunchpegType.ERC1155SingleBundle, LaunchpegVersion.V2);
         } else {
             return (LaunchpegType.Unknown, LaunchpegVersion.Unknown);
         }
@@ -187,7 +207,7 @@ contract LaunchpegLens {
         ILaunchpegFactory factory = (_version == LaunchpegVersion.V1)
             ? launchpegFactoryV1
             : launchpegFactoryV2;
-        // 0 - Launchpeg, 1 - FlatLaunchpeg
+        // 0 - Launchpeg, 1 - FlatLaunchpeg, 2 - ERC1155SingleBundle
         uint256 lpTypeIdx = uint8(_type) - 1;
         uint256 numLaunchpegs = factory.numLaunchpegs(lpTypeIdx);
 
@@ -211,11 +231,10 @@ contract LaunchpegLens {
     /// @param _launchpeg Contract address to consider
     /// @param _user Address to consider for NFT balances and allowlist allocations
     /// @return LensData Contract data
-    function getLaunchpegData(address _launchpeg, address _user)
-        public
-        view
-        returns (LensData memory)
-    {
+    function getLaunchpegData(
+        address _launchpeg,
+        address _user
+    ) public view returns (LensData memory) {
         (
             LaunchpegType launchType,
             LaunchpegVersion launchVersion
@@ -227,10 +246,17 @@ contract LaunchpegLens {
         LensData memory data;
         data.id = _launchpeg;
         data.launchType = launchType;
-        data.collectionData = _getCollectionData(_launchpeg);
+        data.collectionData = _getCollectionData(_launchpeg, launchType);
         data.projectOwnerData = _getProjectOwnerData(_launchpeg, launchVersion);
-        data.revealData = _getBatchRevealData(_launchpeg, launchVersion);
-        data.userData = _getUserData(_launchpeg, launchVersion, _user);
+        if (data.launchType != LaunchpegType.ERC1155SingleBundle) {
+            data.revealData = _getBatchRevealData(_launchpeg, launchVersion);
+        }
+        data.userData = _getUserData(
+            _launchpeg,
+            launchVersion,
+            launchType,
+            _user
+        );
 
         if (data.launchType == LaunchpegType.Launchpeg) {
             data.launchpegData = _getLaunchpegData(_launchpeg, launchVersion);
@@ -239,6 +265,10 @@ contract LaunchpegLens {
                 _launchpeg,
                 launchVersion
             );
+        } else if (data.launchType == LaunchpegType.ERC1155SingleBundle) {
+            data.erc1155SingleBundleData = _getERC1155SingleBundleData(
+                _launchpeg
+            );
         }
 
         return data;
@@ -246,19 +276,23 @@ contract LaunchpegLens {
 
     /// @dev Fetches Launchpeg collection data
     /// @param _launchpeg Launchpeg address
-    function _getCollectionData(address _launchpeg)
-        private
-        view
-        returns (CollectionData memory data)
-    {
+    function _getCollectionData(
+        address _launchpeg,
+        LaunchpegType launchType
+    ) private view returns (CollectionData memory data) {
         data.name = ERC721AUpgradeable(_launchpeg).name();
         data.symbol = ERC721AUpgradeable(_launchpeg).symbol();
         data.collectionSize = IBaseLaunchpeg(_launchpeg).collectionSize();
         data.maxPerAddressDuringMint = IBaseLaunchpeg(_launchpeg)
             .maxPerAddressDuringMint();
-        data.totalSupply = ERC721AUpgradeable(_launchpeg).totalSupply();
-        data.unrevealedURI = IBaseLaunchpeg(_launchpeg).unrevealedURI();
-        data.baseURI = IBaseLaunchpeg(_launchpeg).baseURI();
+
+        if (launchType != LaunchpegType.ERC1155SingleBundle) {
+            data.totalSupply = ERC721AUpgradeable(_launchpeg).totalSupply();
+            data.unrevealedURI = IBaseLaunchpeg(_launchpeg).unrevealedURI();
+            data.baseURI = IBaseLaunchpeg(_launchpeg).baseURI();
+        } else {
+            data.baseURI = ERC1155LaunchpegBase(_launchpeg).uri(0);
+        }
     }
 
     /// @dev Fetches Launchpeg project owner data
@@ -284,11 +318,9 @@ contract LaunchpegLens {
 
     /// @dev Fetches Launchpeg project owners. Only works for Launchpeg V2.
     /// @param _launchpeg Launchpeg address
-    function _getProjectOwners(address _launchpeg)
-        private
-        view
-        returns (address[] memory)
-    {
+    function _getProjectOwners(
+        address _launchpeg
+    ) private view returns (address[] memory) {
         bytes32 role = IBaseLaunchpeg(_launchpeg).PROJECT_OWNER_ROLE();
         uint256 count = IAccessControlEnumerableUpgradeable(_launchpeg)
             .getRoleMemberCount(role);
@@ -367,6 +399,25 @@ contract LaunchpegLens {
         }
     }
 
+    function _getERC1155SingleBundleData(
+        address launchpeg
+    ) private view returns (ERC1155SingleBundleData memory data) {
+        ERC1155SingleBundle lp = ERC1155SingleBundle(launchpeg);
+        data.tokenSet = lp.tokenSet();
+        data.currentPhase = IBaseLaunchpeg.Phase(uint8(lp.currentPhase()));
+        data.amountForPreMint = lp.amountForPreMint();
+        data.amountForDevs = lp.amountForDevs();
+        data.preMintStartTime = lp.preMintStartTime();
+        data.publicSaleStartTime = lp.publicSaleStartTime();
+        data.publicSaleEndTime = lp.publicSaleEndTime();
+        data.preMintPrice = lp.preMintPrice();
+        data.salePrice = lp.publicSalePrice();
+        data.amountMintedDuringPreMint = lp.amountMintedDuringPreMint();
+        data.amountClaimedDuringPreMint = lp.amountClaimedDuringPreMint();
+        data.amountMintedDuringAllowlist = lp.amountMintedDuringPublicSale();
+        data.amountMintedDuringPublicSale = lp.amountMintedDuringPublicSale();
+    }
+
     /// @dev Fetches batch reveal data
     /// @param _launchpeg Launchpeg address
     /// @param launchVersion Launchpeg version
@@ -402,16 +453,27 @@ contract LaunchpegLens {
     function _getUserData(
         address _launchpeg,
         LaunchpegVersion launchVersion,
+        LaunchpegType launchType,
         address _user
     ) private view returns (UserData memory data) {
         if (_user != address(0)) {
-            data.balanceOf = ERC721AUpgradeable(_launchpeg).balanceOf(_user);
             data.numberMinted = IBaseLaunchpeg(_launchpeg).numberMinted(_user);
             data.allowanceForAllowlistMint = IBaseLaunchpeg(_launchpeg)
                 .allowlist(_user);
             if (launchVersion == LaunchpegVersion.V2) {
                 data.numberMintedWithPreMint = IBaseLaunchpeg(_launchpeg)
                     .numberMintedWithPreMint(_user);
+            }
+
+            if (launchType == LaunchpegType.ERC1155SingleBundle) {
+                data.balanceOf = ERC1155SingleBundle(_launchpeg).balanceOf(
+                    _user,
+                    ERC1155SingleBundle(_launchpeg).tokenSet()[0]
+                );
+            } else {
+                data.balanceOf = ERC721AUpgradeable(_launchpeg).balanceOf(
+                    _user
+                );
             }
         }
     }

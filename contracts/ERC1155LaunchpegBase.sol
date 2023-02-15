@@ -26,7 +26,7 @@ abstract contract ERC1155LaunchpegBase is
     uint256 private constant BASIS_POINT_PRECISION = 10_000;
 
     /// @notice Role granted to project owners
-    bytes32 internal constant PROJECT_OWNER_ROLE =
+    bytes32 public constant PROJECT_OWNER_ROLE =
         keccak256("PROJECT_OWNER_ROLE");
 
     /**
@@ -155,10 +155,6 @@ abstract contract ERC1155LaunchpegBase is
     /// @notice Returns the current phase
     /// @return phase Current phase
     function currentPhase() public view virtual returns (Phase);
-
-    function projectOwnerRole() external pure returns (bytes32) {
-        return PROJECT_OWNER_ROLE;
-    }
 
     function uri(uint256 tokenId) public view override returns (string memory) {
         return string(abi.encodePacked(super.uri(tokenId), tokenId.toString()));

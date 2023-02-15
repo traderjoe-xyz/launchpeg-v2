@@ -159,7 +159,7 @@ describe('ERC1155SingleBundle', () => {
         'SafeAccessControlEnumerableUpgradeable__SenderMissingRoleAndIsNotOwner'
       )
 
-      await launchpeg.grantRole(await launchpeg.projectOwnerRole(), alice.address)
+      await launchpeg.grantRole(await launchpeg.PROJECT_OWNER_ROLE(), alice.address)
       await launchpeg.connect(alice).devMint(config.amountForDevs)
 
       expect(await launchpeg.amountMintedByDevs()).to.eq(config.amountForDevs)

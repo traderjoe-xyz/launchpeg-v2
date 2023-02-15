@@ -95,7 +95,7 @@ describe('ERC1155LaunchpegBase', () => {
       expect(await launchpegBase.joeFeeCollector()).to.eq(dev.address)
 
       expect(await launchpegBase.operatorFilterRegistry()).to.eq('0x000000000000AAeB6D7670E522A718067333cd4E')
-      expect(await launchpegBase.hasRole(await launchpegBase.projectOwnerRole(), royaltyReceiver.address)).to.be.true
+      expect(await launchpegBase.hasRole(await launchpegBase.PROJECT_OWNER_ROLE(), royaltyReceiver.address)).to.be.true
     })
 
     it("Can't be initialized twice", async () => {
