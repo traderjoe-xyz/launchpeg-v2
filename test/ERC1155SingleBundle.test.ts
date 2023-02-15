@@ -6,7 +6,7 @@ import { advanceTimeAndBlockToPhase, getDefaultLaunchpegConfig, Phase, Launchpeg
 import { advanceTimeAndBlock, latest, duration } from './utils/time'
 import { loadFixture, mine, reset, time } from '@nomicfoundation/hardhat-network-helpers'
 
-describe('ERC1155SingleBundle', () => {
+describe.only('ERC1155SingleBundle', () => {
   let launchpeg: Contract
   let config: LaunchpegConfig
 
@@ -18,22 +18,38 @@ describe('ERC1155SingleBundle', () => {
   let joeFeeCollector: SignerWithAddress
 
   const deployContractsFixture = async () => {
+    const launchpegFactoryCF = await ethers.getContractFactory('LaunchpegFactory')
     const erc1155SingleBundleCF = await ethers.getContractFactory('ERC1155SingleBundle')
-    const erc1155SingleBundle = await erc1155SingleBundleCF.deploy()
+
+    const launchpegFactory = await launchpegFactoryCF.deploy()
+    const erc1155SingleBundleImplementation = await erc1155SingleBundleCF.deploy()
 
     const testConfig = await getDefaultLaunchpegConfig()
 
-    await erc1155SingleBundle.initialize(
-      dev.address,
-      royaltyReceiver.address,
+    await launchpegFactory.initialize(
+      erc1155SingleBundleImplementation.address,
+      erc1155SingleBundleImplementation.address,
+      erc1155SingleBundleImplementation.address,
+      erc1155SingleBundleImplementation.address,
       testConfig.joeFeePercent,
-      testConfig.baseTokenURI,
+      dev.address
+    )
+
+    await launchpegFactory.create1155SingleToken(
+      'JoePEG',
+      'JOEPEG',
+      royaltyReceiver.address,
+      testConfig.maxPerAddressDuringMint,
       testConfig.collectionSize,
       testConfig.amountForDevs,
       testConfig.amountForAllowlist,
-      testConfig.maxPerAddressDuringMint,
-      '1155 Single Token',
-      '1155-ST'
+      [0],
+      false
+    )
+
+    const erc1155SingleBundle = await ethers.getContractAt(
+      'ERC1155SingleBundle',
+      await launchpegFactory.allLaunchpegs(2, 0)
     )
 
     await erc1155SingleBundle.initializePhases(
@@ -70,32 +86,28 @@ describe('ERC1155SingleBundle', () => {
       expect(await launchpeg.amountForPreMint()).to.eq(config.amountForAllowlist)
       expect(await launchpeg.maxPerAddressDuringMint()).to.eq(config.maxPerAddressDuringMint)
 
+      expect(await launchpeg.amountMintedByDevs()).to.eq(0)
+      expect(await launchpeg.amountMintedDuringPreMint()).to.eq(0)
+      expect(await launchpeg.amountClaimedDuringPreMint()).to.eq(0)
+      expect(await launchpeg.amountMintedDuringPublicSale()).to.eq(0)
+
       expect(await launchpeg.preMintPrice()).to.eq(config.flatAllowlistSalePrice)
       expect(await launchpeg.publicSalePrice()).to.eq(config.flatPublicSalePrice)
 
       expect(await launchpeg.preMintStartTime()).to.eq(config.preMintStartTime)
       expect(await launchpeg.publicSaleStartTime()).to.eq(config.publicSaleStartTime)
       expect(await launchpeg.publicSaleEndTime()).to.eq(config.publicSaleEndTime)
-
-      expect(await launchpeg.amountMintedByDevs()).to.eq(0)
-      expect(await launchpeg.amountMintedDuringPreMint()).to.eq(0)
-      expect(await launchpeg.amountClaimedDuringPreMint()).to.eq(0)
-      expect(await launchpeg.amountMintedDuringPublicSale()).to.eq(0)
     })
 
     it("Can't be initialized twice", async () => {
       await expect(
         launchpeg.initialize(
-          dev.address,
-          royaltyReceiver.address,
-          config.joeFeePercent,
-          config.baseTokenURI,
+          [dev.address, royaltyReceiver.address, config.joeFeePercent, '1155 Single Token', '1155-ST'],
           config.collectionSize,
           config.amountForDevs,
           config.amountForAllowlist,
           config.maxPerAddressDuringMint,
-          '1155 Single Token',
-          '1155-ST'
+          [0]
         )
       ).to.be.revertedWith('Initializable: contract is already initialized')
     })

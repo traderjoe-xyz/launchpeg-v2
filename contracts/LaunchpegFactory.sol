@@ -285,7 +285,7 @@ contract LaunchpegFactory is
         uint256 collectionSize,
         uint256 amountForDevs,
         uint256 amountForPreMint,
-        string calldata uri,
+        uint256[] calldata tokenSet,
         bool _isUpgradeable
     ) external onlyOwner returns (address) {
         // Packing data to avoid stack too deep error
@@ -295,8 +295,7 @@ contract LaunchpegFactory is
                 collectionName: name,
                 collectionSymbol: symbol,
                 royaltyReceiver: royaltyReceiver,
-                joeFeePercent: joeFeePercent,
-                uri: uri
+                joeFeePercent: joeFeePercent
             });
 
         address launchpeg;
@@ -307,7 +306,8 @@ contract LaunchpegFactory is
                 collectionSize,
                 amountForDevs,
                 amountForPreMint,
-                maxPerAddressDuringMint
+                maxPerAddressDuringMint,
+                tokenSet
             );
 
             ProxyAdmin proxyAdmin = new ProxyAdmin();
@@ -333,7 +333,8 @@ contract LaunchpegFactory is
                 collectionSize,
                 amountForDevs,
                 amountForPreMint,
-                maxPerAddressDuringMint
+                maxPerAddressDuringMint,
+                tokenSet
             );
 
             emit ERC1155SingleBundleCreated(launchpeg);

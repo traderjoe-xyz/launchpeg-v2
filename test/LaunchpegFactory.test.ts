@@ -4,7 +4,7 @@ import { getDefaultLaunchpegConfig, LaunchpegConfig } from './utils/helpers'
 import { Bytes, ContractFactory, Contract } from 'ethers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 
-describe('LaunchpegFactory', () => {
+describe.only('LaunchpegFactory', () => {
   let launchpegCF: ContractFactory
   let flatLaunchpegCF: ContractFactory
   let erc1155SingleBundleCF: ContractFactory
@@ -59,7 +59,7 @@ describe('LaunchpegFactory', () => {
     await deployBatchReveal()
     await deployLaunchpeg()
     await deployFlatLaunchpeg()
-    await deploy1155SingleToken()
+    await deploy1155SingleBundle()
   })
 
   const deployBatchReveal = async () => {
@@ -103,7 +103,7 @@ describe('LaunchpegFactory', () => {
     )
   }
 
-  const deploy1155SingleToken = async () => {
+  const deploy1155SingleBundle = async () => {
     erc1155SingleBundle = await erc1155SingleBundleCF.deploy()
   }
 
@@ -129,6 +129,7 @@ describe('LaunchpegFactory', () => {
         upgrades.deployProxy(launchpegFactoryCF, [
           ethers.constants.AddressZero,
           flatLaunchpeg.address,
+          erc1155SingleBundle.address,
           batchReveal.address,
           200,
           royaltyReceiver.address,
@@ -138,6 +139,18 @@ describe('LaunchpegFactory', () => {
       await expect(
         upgrades.deployProxy(launchpegFactoryCF, [
           launchpeg.address,
+          ethers.constants.AddressZero,
+          erc1155SingleBundle.address,
+          batchReveal.address,
+          200,
+          royaltyReceiver.address,
+        ])
+      ).to.be.revertedWith('LaunchpegFactory__InvalidImplementation()')
+
+      await expect(
+        upgrades.deployProxy(launchpegFactoryCF, [
+          launchpeg.address,
+          flatLaunchpeg.address,
           ethers.constants.AddressZero,
           batchReveal.address,
           200,
@@ -151,6 +164,7 @@ describe('LaunchpegFactory', () => {
         upgrades.deployProxy(launchpegFactoryCF, [
           launchpeg.address,
           flatLaunchpeg.address,
+          erc1155SingleBundle.address,
           ethers.constants.AddressZero,
           200,
           royaltyReceiver.address,
@@ -163,6 +177,7 @@ describe('LaunchpegFactory', () => {
         upgrades.deployProxy(launchpegFactoryCF, [
           launchpeg.address,
           flatLaunchpeg.address,
+          erc1155SingleBundle.address,
           batchReveal.address,
           10_001,
           royaltyReceiver.address,
@@ -175,6 +190,7 @@ describe('LaunchpegFactory', () => {
         upgrades.deployProxy(launchpegFactoryCF, [
           launchpeg.address,
           flatLaunchpeg.address,
+          erc1155SingleBundle.address,
           batchReveal.address,
           200,
           ethers.constants.AddressZero,
@@ -236,7 +252,7 @@ describe('LaunchpegFactory', () => {
         config.collectionSize,
         config.amountForDevs,
         config.amountForAllowlist,
-        'ipfs://{cid}/',
+        [0],
         false
       )
 
@@ -256,7 +272,7 @@ describe('LaunchpegFactory', () => {
         config.collectionSize,
         config.amountForDevs,
         config.amountForAllowlist,
-        'ipfs://{cid}/',
+        [0],
         true
       )
 

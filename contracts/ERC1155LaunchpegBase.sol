@@ -110,7 +110,6 @@ abstract contract ERC1155LaunchpegBase is
         address owner;
         address royaltyReceiver;
         uint256 joeFeePercent;
-        string uri;
         string collectionName;
         string collectionSymbol;
     }
@@ -118,7 +117,7 @@ abstract contract ERC1155LaunchpegBase is
     function __ERC1155LaunchpegBase_init(
         InitData calldata initData
     ) internal onlyInitializing {
-        __ERC1155_init(initData.uri);
+        __ERC1155_init("");
         __ERC2981_init();
         __ReentrancyGuard_init();
         __SafeAccessControlEnumerable_init();

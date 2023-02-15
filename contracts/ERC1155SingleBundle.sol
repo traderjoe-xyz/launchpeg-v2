@@ -25,6 +25,7 @@ contract ERC1155SingleBundle is ERC1155LaunchpegBase {
     uint256 public amountMintedDuringPublicSale;
 
     mapping(address => uint256) public allowlist;
+    uint256[] private _tokenSet;
 
     struct PreMintData {
         address sender;
@@ -58,7 +59,8 @@ contract ERC1155SingleBundle is ERC1155LaunchpegBase {
         uint256 initialMaxSupply,
         uint256 initialAmountForDevs,
         uint256 initialAmountForPreMint,
-        uint256 initialMaxPerAddressDuringMint
+        uint256 initialMaxPerAddressDuringMint,
+        uint256[] calldata initialTokenSet
     ) external initializer {
         __ERC1155LaunchpegBase_init(initData);
 
@@ -67,6 +69,7 @@ contract ERC1155SingleBundle is ERC1155LaunchpegBase {
 
         amountForDevs = initialAmountForDevs;
         amountForPreMint = initialAmountForPreMint;
+        _tokenSet = initialTokenSet;
     }
 
     function initializePhases(
