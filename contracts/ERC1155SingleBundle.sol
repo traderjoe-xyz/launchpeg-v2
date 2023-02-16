@@ -378,7 +378,7 @@ contract ERC1155SingleBundle is
     }
 
     function setAmountForDevs(uint256 newAmountForDevs) external onlyOwner {
-        if (newAmountForDevs > amountMintedByDevs) {
+        if (amountMintedByDevs > newAmountForDevs) {
             revert Launchpeg__MaxSupplyForDevReached();
         }
 
@@ -389,7 +389,7 @@ contract ERC1155SingleBundle is
     function setAmountForPreMint(
         uint256 newAmountForPreMint
     ) external onlyOwner {
-        if (newAmountForPreMint > amountClaimedDuringPreMint) {
+        if (amountClaimedDuringPreMint > newAmountForPreMint) {
             revert Launchpeg__MaxSupplyReached();
         }
 
