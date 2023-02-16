@@ -187,10 +187,6 @@ contract ERC1155SingleBundle is
     ) external whenNotPaused onlyOwnerOrRole(PROJECT_OWNER_ROLE) nonReentrant {
         uint256 amountAlreadyMinted = amountMintedByDevs;
 
-        if (amount > _availableSupply()) {
-            revert Launchpeg__MaxSupplyReached();
-        }
-
         if (amountAlreadyMinted + amount > amountForDevs)
             revert Launchpeg__MaxSupplyForDevReached();
 
@@ -204,15 +200,16 @@ contract ERC1155SingleBundle is
     function preMint(
         uint96 amount
     ) external payable whenNotPaused atPhase(Phase.PreMint) nonReentrant {
-        uint256 amountAlreadyPreMinted = amountMintedDuringPreMint;
-        uint256 userAllowlistAmount = allowlist[msg.sender];
-
         if (amount == 0) {
             revert Launchpeg__InvalidQuantity();
         }
+
+        uint256 userAllowlistAmount = allowlist[msg.sender];
         if (amount > userAllowlistAmount) {
             revert Launchpeg__NotEligibleForAllowlistMint();
         }
+
+        uint256 amountAlreadyPreMinted = amountMintedDuringPreMint;
         if (amountAlreadyPreMinted + amount > amountForPreMint) {
             revert Launchpeg__MaxSupplyReached();
         }
@@ -234,13 +231,14 @@ contract ERC1155SingleBundle is
         amountMintedDuringPreMint = amountAlreadyPreMinted + amount;
         allowlist[msg.sender] = userAllowlistAmount - amount;
 
-        _refundIfOver(preMintPrice * amount);
+        uint256 totalPrice = preMintPrice * amount;
+        _refundIfOver(totalPrice);
 
-        emit PreMint(msg.sender, amount, preMintPrice * amount);
+        emit PreMint(msg.sender, amount, totalPrice);
     }
 
     function claimPremint() external whenNotPaused nonReentrant {
-        if (block.timestamp < preMintStartTime) {
+        if (block.timestamp < publicSaleStartTime) {
             revert Launchpeg__WrongPhase();
         }
 
@@ -380,6 +378,10 @@ contract ERC1155SingleBundle is
     }
 
     function setAmountForDevs(uint256 newAmountForDevs) external onlyOwner {
+        if (newAmountForDevs > amountMintedByDevs) {
+            revert Launchpeg__MaxSupplyForDevReached();
+        }
+
         amountForDevs = newAmountForDevs;
         emit AmountForDevsSet(newAmountForDevs);
     }
@@ -387,6 +389,10 @@ contract ERC1155SingleBundle is
     function setAmountForPreMint(
         uint256 newAmountForPreMint
     ) external onlyOwner {
+        if (newAmountForPreMint > amountClaimedDuringPreMint) {
+            revert Launchpeg__MaxSupplyReached();
+        }
+
         amountForPreMint = newAmountForPreMint;
         emit AmountForPreMintSet(newAmountForPreMint);
     }

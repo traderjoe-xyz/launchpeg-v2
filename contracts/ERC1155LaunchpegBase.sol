@@ -111,8 +111,8 @@ abstract contract ERC1155LaunchpegBase is
     }
 
     /// @notice Checks if the current phase matches the required phase
-    modifier atPhase(Phase _phase) {
-        if (currentPhase() != _phase) {
+    modifier atPhase(Phase phase) {
+        if (currentPhase() != phase) {
             revert Launchpeg__WrongPhase();
         }
         _;

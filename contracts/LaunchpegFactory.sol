@@ -286,7 +286,7 @@ contract LaunchpegFactory is
         uint256 amountForDevs,
         uint256 amountForPreMint,
         uint256[] calldata tokenSet,
-        bool _isUpgradeable
+        bool isUpgradeable
     ) external onlyOwner returns (address) {
         // Packing data to avoid stack too deep error
         ERC1155LaunchpegBase.InitData memory initData = ERC1155LaunchpegBase
@@ -299,7 +299,7 @@ contract LaunchpegFactory is
             });
 
         address launchpeg;
-        if (_isUpgradeable) {
+        if (isUpgradeable) {
             bytes memory data = abi.encodeWithSelector(
                 ERC1155SingleBundle.initialize.selector,
                 initData,
