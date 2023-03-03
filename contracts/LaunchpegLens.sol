@@ -100,12 +100,12 @@ contract LaunchpegLens {
     struct ERC1155SingleBundleData {
         uint256[] tokenSet;
         ILaunchpeg.Phase currentPhase;
-        uint256 amountForPreMint;
+        uint256 amountForAllowlist;
         uint256 amountForDevs;
         uint256 preMintStartTime;
         uint256 publicSaleStartTime;
         uint256 publicSaleEndTime;
-        uint256 preMintPrice;
+        uint256 allowlistPrice;
         uint256 salePrice;
         uint256 amountMintedDuringPreMint;
         uint256 amountClaimedDuringPreMint;
@@ -405,16 +405,16 @@ contract LaunchpegLens {
         ERC1155SingleBundle lp = ERC1155SingleBundle(launchpeg);
         data.tokenSet = lp.tokenSet();
         data.currentPhase = IBaseLaunchpeg.Phase(uint8(lp.currentPhase()));
-        data.amountForPreMint = lp.amountForPreMint();
+        data.amountForAllowlist = lp.amountForPreMint();
         data.amountForDevs = lp.amountForDevs();
         data.preMintStartTime = lp.preMintStartTime();
         data.publicSaleStartTime = lp.publicSaleStartTime();
         data.publicSaleEndTime = lp.publicSaleEndTime();
-        data.preMintPrice = lp.preMintPrice();
+        data.allowlistPrice = lp.preMintPrice();
         data.salePrice = lp.publicSalePrice();
         data.amountMintedDuringPreMint = lp.amountMintedDuringPreMint();
         data.amountClaimedDuringPreMint = lp.amountClaimedDuringPreMint();
-        data.amountMintedDuringAllowlist = lp.amountMintedDuringPublicSale();
+        data.amountMintedDuringAllowlist = 0;
         data.amountMintedDuringPublicSale = lp.amountMintedDuringPublicSale();
     }
 

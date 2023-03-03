@@ -65,6 +65,13 @@ contract ERC1155SingleBundle is
     event PreMint(address indexed sender, uint256 quantity, uint256 price);
     event TokenSetUpdated(uint256[] tokenSet);
 
+    modifier isEOA() {
+        if (tx.origin != msg.sender) {
+            revert Launchpeg__Unauthorized();
+        }
+        _;
+    }
+
     constructor() {
         _disableInitializers();
     }
@@ -160,7 +167,11 @@ contract ERC1155SingleBundle is
         return Phase.Ended;
     }
 
-    function amountOfUsersWaitingForPremint() external view returns (uint256) {
+    function amountOfUsersWaitingForPremintClaim()
+        external
+        view
+        returns (uint256)
+    {
         return _pendingPreMints.preMintDataArr.length;
     }
 
@@ -273,6 +284,10 @@ contract ERC1155SingleBundle is
     function batchClaimPreMint(
         uint256 numberOfClaims
     ) external whenNotPaused nonReentrant {
+        if (block.timestamp < publicSaleStartTime) {
+            revert Launchpeg__WrongPhase();
+        }
+
         uint256 initialRemainingPreMints = _pendingPreMints
             .preMintDataArr
             .length;
@@ -305,7 +320,14 @@ contract ERC1155SingleBundle is
 
     function publicSaleMint(
         uint256 amount
-    ) external payable whenNotPaused atPhase(Phase.PublicSale) nonReentrant {
+    )
+        external
+        payable
+        whenNotPaused
+        atPhase(Phase.PublicSale)
+        nonReentrant
+        isEOA
+    {
         if (
             numberMinted[msg.sender] +
                 userPendingPreMints(msg.sender) +
@@ -389,7 +411,7 @@ contract ERC1155SingleBundle is
     function setAmountForPreMint(
         uint256 newAmountForPreMint
     ) external onlyOwner {
-        if (amountClaimedDuringPreMint > newAmountForPreMint) {
+        if (amountMintedDuringPreMint > newAmountForPreMint) {
             revert Launchpeg__MaxSupplyReached();
         }
 
@@ -445,9 +467,11 @@ contract ERC1155SingleBundle is
         numberMinted[to] += amount;
 
         uint256 tokenAmount = _tokenSet.length;
-
+        uint256[] memory amounts = new uint256[](tokenAmount);
         for (uint i = 0; i < tokenAmount; i++) {
-            _mint(to, _tokenSet[i], amount, "");
+            amounts[i] = amount;
         }
+
+        _mintBatch(to, _tokenSet, amounts, "");
     }
 }

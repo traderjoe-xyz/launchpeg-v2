@@ -35,7 +35,7 @@ describe('ERC1155LaunchpegBase', () => {
       dev.address
     )
 
-    await launchpegFactory.create1155SingleToken(
+    await launchpegFactory.create1155SingleBundle(
       '1155 Single Token',
       '1155-ST',
       royaltyReceiver.address,

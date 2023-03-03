@@ -244,7 +244,7 @@ describe('LaunchpegFactory', () => {
     it('Should create ERC1155SingleBundle as well', async () => {
       expect(await launchpegFactory.numLaunchpegs(2)).to.equal(0)
 
-      await launchpegFactory.create1155SingleToken(
+      await launchpegFactory.create1155SingleBundle(
         'JoePEG',
         'JOEPEG',
         royaltyReceiver.address,
@@ -264,7 +264,7 @@ describe('LaunchpegFactory', () => {
     it('Should correctly setup upgradeable ERC1155SingleBundle', async () => {
       expect(await launchpegFactory.numLaunchpegs(2)).to.equal(0)
 
-      const tx = await launchpegFactory.create1155SingleToken(
+      const tx = await launchpegFactory.create1155SingleBundle(
         'JoePEG',
         'JOEPEG',
         royaltyReceiver.address,

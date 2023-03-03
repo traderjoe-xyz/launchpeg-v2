@@ -277,7 +277,7 @@ contract LaunchpegFactory is
         return flatLaunchpeg;
     }
 
-    function create1155SingleToken(
+    function create1155SingleBundle(
         string calldata name,
         string calldata symbol,
         address royaltyReceiver,

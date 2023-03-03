@@ -115,7 +115,7 @@ describe('LaunchpegLens', function () {
   }
 
   const create1155SingleBundle = async () => {
-    await launchpegFactory.create1155SingleToken(
+    await launchpegFactory.create1155SingleBundle(
       'JoePEG',
       'JOEPEG',
       royaltyReceiver.address,

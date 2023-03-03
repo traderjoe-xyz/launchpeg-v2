@@ -37,7 +37,7 @@ describe('ERC1155SingleBundle', () => {
       dev.address
     )
 
-    await launchpegFactory.create1155SingleToken(
+    await launchpegFactory.create1155SingleBundle(
       'JoePEG',
       'JOEPEG',
       royaltyReceiver.address,
@@ -181,12 +181,12 @@ describe('ERC1155SingleBundle', () => {
       await launchpeg.connect(alice).preMint(3, { value: config.flatAllowlistSalePrice.mul(3) })
       expect(await launchpeg.userPendingPreMints(alice.address)).to.eq(3)
       expect(await launchpeg.amountMintedDuringPreMint()).to.eq(3)
-      expect(await launchpeg.amountOfUsersWaitingForPremint()).to.eq(1)
+      expect(await launchpeg.amountOfUsersWaitingForPremintClaim()).to.eq(1)
 
       await launchpeg.connect(bob).preMint(1, { value: config.flatAllowlistSalePrice.mul(1) })
       expect(await launchpeg.userPendingPreMints(bob.address)).to.eq(1)
       expect(await launchpeg.amountMintedDuringPreMint()).to.eq(4)
-      expect(await launchpeg.amountOfUsersWaitingForPremint()).to.eq(2)
+      expect(await launchpeg.amountOfUsersWaitingForPremintClaim()).to.eq(2)
     })
   })
 
@@ -209,7 +209,7 @@ describe('ERC1155SingleBundle', () => {
       await launchpeg.connect(alice).claimPremint()
       expect(await launchpeg.userPendingPreMints(alice.address)).to.eq(0)
       expect(await launchpeg.amountClaimedDuringPreMint()).to.eq(3)
-      expect(await launchpeg.amountOfUsersWaitingForPremint()).to.eq(2)
+      expect(await launchpeg.amountOfUsersWaitingForPremintClaim()).to.eq(2)
       for (let i = 0; i < tokenSet.length; i++) {
         expect(await launchpeg.balanceOf(alice.address, tokenSet[i])).to.eq(3)
       }
@@ -224,7 +224,7 @@ describe('ERC1155SingleBundle', () => {
       expect(await launchpeg.userPendingPreMints(carol.address)).to.eq(0)
 
       expect(await launchpeg.amountClaimedDuringPreMint()).to.eq(8)
-      expect(await launchpeg.amountOfUsersWaitingForPremint()).to.eq(0)
+      expect(await launchpeg.amountOfUsersWaitingForPremintClaim()).to.eq(0)
 
       for (let i = 0; i < tokenSet.length; i++) {
         expect(await launchpeg.balanceOf(alice.address, tokenSet[i])).to.eq(3)
@@ -249,7 +249,7 @@ describe('ERC1155SingleBundle', () => {
       expect(await launchpeg.userPendingPreMints(bob.address)).to.eq(0)
       expect(await launchpeg.userPendingPreMints(carol.address)).to.eq(0)
       expect(await launchpeg.amountClaimedDuringPreMint()).to.eq(5)
-      expect(await launchpeg.amountOfUsersWaitingForPremint()).to.eq(1)
+      expect(await launchpeg.amountOfUsersWaitingForPremintClaim()).to.eq(1)
 
       for (let i = 0; i < tokenSet.length; i++) {
         expect(await launchpeg.balanceOf(bob.address, tokenSet[i])).to.eq(1)
@@ -270,13 +270,13 @@ describe('ERC1155SingleBundle', () => {
       expect(await launchpeg.userPendingPreMints(carol.address)).to.eq(4)
 
       expect(await launchpeg.amountClaimedDuringPreMint()).to.eq(4)
-      expect(await launchpeg.amountOfUsersWaitingForPremint()).to.eq(1)
+      expect(await launchpeg.amountOfUsersWaitingForPremintClaim()).to.eq(1)
 
       await launchpeg.connect(carol).claimPremint()
 
       expect(await launchpeg.userPendingPreMints(carol.address)).to.eq(0)
       expect(await launchpeg.amountClaimedDuringPreMint()).to.eq(8)
-      expect(await launchpeg.amountOfUsersWaitingForPremint()).to.eq(0)
+      expect(await launchpeg.amountOfUsersWaitingForPremintClaim()).to.eq(0)
     })
   })
 
