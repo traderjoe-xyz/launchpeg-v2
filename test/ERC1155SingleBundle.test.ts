@@ -137,7 +137,7 @@ describe('ERC1155SingleBundle', () => {
     })
   })
 
-  describe.only('Configuration', () => {
+  describe('Configuration', () => {
     it('Should be able to set new pre-mint price', async () => {
       const newPrice = 100
       await launchpeg.setPreMintPrice(newPrice)
