@@ -37,6 +37,7 @@ error Launchpeg__NotEligibleForAllowlistMint();
 error Launchpeg__NotEnoughAVAX(uint256 avaxSent);
 error Launchpeg__NotInitialized();
 error Launchpeg__RevealNextBatchNotAvailable();
+error Launchpeg__SaleParametersLocked();
 error Launchpeg__TransferFailed();
 error Launchpeg__Unauthorized();
 error Launchpeg__WithdrawAVAXNotAvailable();

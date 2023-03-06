@@ -137,6 +137,72 @@ describe('ERC1155SingleBundle', () => {
     })
   })
 
+  describe.only('Configuration', () => {
+    it('Should be able to set new pre-mint price', async () => {
+      const newPrice = 100
+      await launchpeg.setPreMintPrice(newPrice)
+      expect(await launchpeg.preMintPrice()).to.eq(newPrice)
+    })
+
+    it('Should be able to set new public sale price', async () => {
+      const newPrice = config.flatPublicSalePrice.add(100)
+      await launchpeg.setPublicSalePrice(newPrice)
+      expect(await launchpeg.publicSalePrice()).to.eq(newPrice)
+    })
+
+    it('Should be able to set new pre-mint start time', async () => {
+      const newTime = config.preMintStartTime.add(100)
+      await launchpeg.setPreMintStartTime(newTime)
+      expect(await launchpeg.preMintStartTime()).to.eq(newTime)
+    })
+
+    it('Should be able to set new public sale start time', async () => {
+      const newTime = config.publicSaleStartTime.add(100)
+      await launchpeg.setPublicSaleStartTime(newTime)
+      expect(await launchpeg.publicSaleStartTime()).to.eq(newTime)
+    })
+
+    it('Should be able to set new public sale end time', async () => {
+      const newTime = config.publicSaleEndTime.add(100)
+      await launchpeg.setPublicSaleEndTime(newTime)
+      expect(await launchpeg.publicSaleEndTime()).to.eq(newTime)
+    })
+
+    it('Should be able to set new max per address during mint', async () => {
+      const newMax = 100
+      await launchpeg.setMaxPerAddressDuringMint(newMax)
+      expect(await launchpeg.maxPerAddressDuringMint()).to.eq(newMax)
+    })
+
+    it('Should be able to set new max per address during mint', async () => {
+      const newMax = 100
+      await launchpeg.setMaxPerAddressDuringMint(newMax)
+      expect(await launchpeg.maxPerAddressDuringMint()).to.eq(newMax)
+    })
+
+    it('Should be able to set new max per address during mint', async () => {
+      const newMax = 100
+      await launchpeg.setMaxPerAddressDuringMint(newMax)
+      expect(await launchpeg.maxPerAddressDuringMint()).to.eq(newMax)
+    })
+
+    it('Should be able to set new max per address during mint', async () => {
+      const newMax = 100
+      await launchpeg.setMaxPerAddressDuringMint
+    })
+
+    it('Should not be able to update the sale config if the contract is locked', async () => {
+      await launchpeg.lockSaleParameters()
+
+      await expect(launchpeg.setPreMintPrice(100)).to.be.revertedWith('Launchpeg__SaleParametersLocked()')
+      await expect(launchpeg.setPublicSalePrice(100)).to.be.revertedWith('Launchpeg__SaleParametersLocked()')
+      await expect(launchpeg.setPreMintStartTime(100)).to.be.revertedWith('Launchpeg__SaleParametersLocked()')
+      await expect(launchpeg.setPublicSaleStartTime(100)).to.be.revertedWith('Launchpeg__SaleParametersLocked()')
+      await expect(launchpeg.setPublicSaleEndTime(100)).to.be.revertedWith('Launchpeg__SaleParametersLocked()')
+      await expect(launchpeg.setMaxPerAddressDuringMint(100)).to.be.revertedWith('Launchpeg__SaleParametersLocked()')
+    })
+  })
+
   describe('Dev mint', () => {
     it('Dev should be able to mint their allocation anytime', async () => {
       await launchpeg.devMint(config.amountForDevs)

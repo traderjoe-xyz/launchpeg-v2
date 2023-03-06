@@ -347,9 +347,7 @@ contract ERC1155SingleBundle is
         _refundIfOver(publicSalePrice * amount);
     }
 
-    function updateTokenSet(
-        uint256[] calldata newTokenSet
-    ) external onlyOwner atPhase(Phase.NotStarted) {
+    function updateTokenSet(uint256[] calldata newTokenSet) external onlyOwner {
         _tokenSet = newTokenSet;
         emit TokenSetUpdated(newTokenSet);
     }
@@ -371,7 +369,7 @@ contract ERC1155SingleBundle is
 
     function setPreMintStartTime(
         uint256 newPreMintStartTime
-    ) external onlyOwner {
+    ) external onlyOwner contractNotLocked {
         if (newPreMintStartTime > publicSaleStartTime)
             revert Launchpeg__InvalidPhases();
 
@@ -381,7 +379,7 @@ contract ERC1155SingleBundle is
 
     function setPublicSaleStartTime(
         uint256 newPublicSaleStartTime
-    ) external onlyOwner {
+    ) external onlyOwner contractNotLocked {
         if (newPublicSaleStartTime > publicSaleEndTime)
             revert Launchpeg__InvalidPhases();
 
@@ -391,7 +389,7 @@ contract ERC1155SingleBundle is
 
     function setPublicSaleEndTime(
         uint256 newPublicSaleEndTime
-    ) external onlyOwner {
+    ) external onlyOwner contractNotLocked {
         if (newPublicSaleEndTime < publicSaleStartTime)
             revert Launchpeg__InvalidPhases();
 
@@ -399,7 +397,9 @@ contract ERC1155SingleBundle is
         emit PublicSaleEndTimeSet(newPublicSaleEndTime);
     }
 
-    function setAmountForDevs(uint256 newAmountForDevs) external onlyOwner {
+    function setAmountForDevs(
+        uint256 newAmountForDevs
+    ) external onlyOwner contractNotLocked {
         if (amountMintedByDevs > newAmountForDevs) {
             revert Launchpeg__MaxSupplyForDevReached();
         }
@@ -410,7 +410,7 @@ contract ERC1155SingleBundle is
 
     function setAmountForPreMint(
         uint256 newAmountForPreMint
-    ) external onlyOwner {
+    ) external onlyOwner contractNotLocked {
         if (amountMintedDuringPreMint > newAmountForPreMint) {
             revert Launchpeg__MaxSupplyReached();
         }
@@ -419,7 +419,9 @@ contract ERC1155SingleBundle is
         emit AmountForPreMintSet(newAmountForPreMint);
     }
 
-    function setPreMintPrice(uint256 newPreMintPrice) external onlyOwner {
+    function setPreMintPrice(
+        uint256 newPreMintPrice
+    ) external onlyOwner contractNotLocked {
         if (newPreMintPrice > publicSalePrice)
             revert Launchpeg__InvalidAllowlistPrice();
 
@@ -427,7 +429,9 @@ contract ERC1155SingleBundle is
         emit PreMintPriceSet(newPreMintPrice);
     }
 
-    function setPublicSalePrice(uint256 newPublicSalePrice) external onlyOwner {
+    function setPublicSalePrice(
+        uint256 newPublicSalePrice
+    ) external onlyOwner contractNotLocked {
         if (newPublicSalePrice < preMintPrice)
             revert Launchpeg__InvalidAllowlistPrice();
 
@@ -435,7 +439,9 @@ contract ERC1155SingleBundle is
         emit PublicSalePriceSet(newPublicSalePrice);
     }
 
-    function setCollectionSize(uint256 newCollectionSize) external onlyOwner {
+    function setCollectionSize(
+        uint256 newCollectionSize
+    ) external onlyOwner contractNotLocked {
         if (
             newCollectionSize < amountForDevs + amountForPreMint ||
             newCollectionSize <
@@ -450,7 +456,7 @@ contract ERC1155SingleBundle is
 
     function setMaxPerAddressDuringMint(
         uint256 newMaxAmountPerUser
-    ) external onlyOwner {
+    ) external onlyOwner contractNotLocked {
         maxPerAddressDuringMint = newMaxAmountPerUser;
         emit MaxPerAddressDuringMintSet(newMaxAmountPerUser);
     }

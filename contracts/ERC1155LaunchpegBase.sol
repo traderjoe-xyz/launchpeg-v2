@@ -29,10 +29,9 @@ abstract contract ERC1155LaunchpegBase is
     bytes32 public constant PROJECT_OWNER_ROLE =
         keccak256("PROJECT_OWNER_ROLE");
 
-    /**
-     * @notice Contract filtering allowed operators, preventing unauthorized contract to transfer NFTs
-     * By default, Launchpeg contracts are subscribed to OpenSea's Curated Subscription Address at 0x3cc6CddA760b79bAfa08dF41ECFA224f810dCeB6
-     */
+    /// @notice Contract filtering allowed operators, preventing unauthorized contract to transfer NFTs
+    /// By default, Launchpeg contracts are subscribed to OpenSea's Curated Subscription Address at 0x3cc6CddA760b79bAfa08dF41ECFA224f810dCeB6
+
     IOperatorFilterRegistry public operatorFilterRegistry;
 
     /// @notice The fees collected by Joepegs on the sale benefits
@@ -44,6 +43,10 @@ abstract contract ERC1155LaunchpegBase is
 
     /// @notice Start time when funds can be withdrawn
     uint256 public withdrawAVAXStartTime;
+
+    /// @notice This boolean can be turned on to prevent any changes on the sale parameters.
+    /// @dev Once set to true, it shouldn't be possible to turn it back to false.
+    bool public locked;
 
     string public name;
 
@@ -94,6 +97,8 @@ abstract contract ERC1155LaunchpegBase is
     /// @param uri The new base URI
     event URISet(string uri);
 
+    event SaleParametersLocked();
+
     /// @notice Allow spending tokens from addresses with balance
     /// Note that this still allows listings and marketplaces with escrow to transfer tokens if transferred
     /// from an EOA.
@@ -107,6 +112,13 @@ abstract contract ERC1155LaunchpegBase is
     /// @notice Allow approving tokens transfers
     modifier onlyAllowedOperatorApproval(address operator) virtual {
         _checkFilterOperator(operator);
+        _;
+    }
+
+    modifier contractNotLocked() {
+        if (locked) {
+            revert Launchpeg__SaleParametersLocked();
+        }
         _;
     }
 
@@ -218,6 +230,12 @@ abstract contract ERC1155LaunchpegBase is
         _updateOperatorFilterRegistryAddress(
             IOperatorFilterRegistry(newOperatorFilterRegistry)
         );
+    }
+
+    function lockSaleParameters() external onlyOwner contractNotLocked {
+        locked = true;
+
+        emit SaleParametersLocked();
     }
 
     /// @notice Withdraw AVAX to the given recipient
