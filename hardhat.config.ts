@@ -8,6 +8,7 @@ import 'hardhat-contract-sizer'
 import 'hardhat-deploy'
 import 'hardhat-deploy-ethers'
 import 'solidity-coverage'
+import 'hardhat-gas-reporter'
 import { HardhatUserConfig } from 'hardhat/config'
 import glob from 'glob'
 import path from 'path'
@@ -58,6 +59,13 @@ const config: HardhatUserConfig = {
       avalanche: process.env.SNOWTRACE_API_KEY,
       avalancheFujiTestnet: process.env.SNOWTRACE_API_KEY,
     },
+  },
+  gasReporter: {
+    currency: 'USD',
+    gasPrice: 25_000_000_000,
+    enabled: true,
+    outputFile: 'gas-report.txt',
+    noColors: true,
   },
 }
 
