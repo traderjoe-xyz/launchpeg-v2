@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.4;
 
+import "@openzeppelin/contracts/utils/math/SafeCast.sol";
+
 import "./LaunchpegErrors.sol";
 import {ERC1155LaunchpegBase} from "./ERC1155LaunchpegBase.sol";
 import {IERC1155LaunchpegSingleBundle} from "./interfaces/IERC1155LaunchpegSingleBundle.sol";
@@ -9,6 +11,8 @@ contract ERC1155SingleBundle is
     IERC1155LaunchpegSingleBundle,
     ERC1155LaunchpegBase
 {
+    using SafeCast for uint256;
+
     struct PreMintData {
         address sender;
         uint96 quantity;
@@ -19,23 +23,23 @@ contract ERC1155SingleBundle is
         mapping(address => uint256) indexes;
     }
 
-    uint256 public collectionSize;
-    uint256 public maxPerAddressDuringMint;
+    uint128 public collectionSize;
+    uint128 public maxPerAddressDuringMint;
 
-    uint256 public preMintPrice;
-    uint256 public publicSalePrice;
+    uint128 public amountForDevs;
+    uint128 public amountMintedByDevs;
 
-    uint256 public preMintStartTime;
-    uint256 public publicSaleStartTime;
-    uint256 public publicSaleEndTime;
+    uint128 public preMintPrice;
+    uint128 public preMintStartTime;
 
-    uint256 public amountForDevs;
-    uint256 public amountForPreMint;
-
-    uint256 public amountMintedByDevs;
-    uint256 public amountMintedDuringPreMint;
+    uint128 public amountForPreMint;
+    uint128 public amountMintedDuringPreMint;
     uint256 public amountClaimedDuringPreMint;
-    uint256 public amountMintedDuringPublicSale;
+
+    uint128 public publicSalePrice;
+    uint128 public publicSaleStartTime;
+    uint128 public publicSaleEndTime;
+    uint128 public amountMintedDuringPublicSale;
 
     mapping(address => uint256) public allowlist;
     mapping(address => uint256) public numberMinted;
@@ -86,15 +90,15 @@ contract ERC1155SingleBundle is
     ) external initializer {
         __ERC1155LaunchpegBase_init(initData);
 
-        if (amountForDevs + amountForPreMint > collectionSize) {
+        if (amountForDevs + amountForPreMint > initialMaxSupply) {
             revert Launchpeg__LargerCollectionSizeNeeded();
         }
 
-        collectionSize = initialMaxSupply;
-        maxPerAddressDuringMint = initialMaxPerAddressDuringMint;
+        collectionSize = initialMaxSupply.toUint128();
+        maxPerAddressDuringMint = initialMaxPerAddressDuringMint.toUint128();
 
-        amountForDevs = initialAmountForDevs;
-        amountForPreMint = initialAmountForPreMint;
+        amountForDevs = initialAmountForDevs.toUint128();
+        amountForPreMint = initialAmountForPreMint.toUint128();
         _tokenSet = initialTokenSet;
     }
 
@@ -117,12 +121,12 @@ contract ERC1155SingleBundle is
             revert Launchpeg__InvalidAllowlistPrice();
         }
 
-        preMintPrice = initialPreMintPrice;
-        publicSalePrice = initialPublicSalePrice;
-        preMintStartTime = initialPreMintStartTime;
+        preMintPrice = initialPreMintPrice.toUint128();
+        publicSalePrice = initialPublicSalePrice.toUint128();
+        preMintStartTime = initialPreMintStartTime.toUint128();
 
-        publicSaleStartTime = initialPublicSaleStartTime;
-        publicSaleEndTime = initialPublicSaleEndTime;
+        publicSaleStartTime = initialPublicSaleStartTime.toUint128();
+        publicSaleEndTime = initialPublicSaleEndTime.toUint128();
 
         withdrawAVAXStartTime = initialPublicSaleStartTime + 3 days;
 
@@ -201,7 +205,7 @@ contract ERC1155SingleBundle is
         if (amountAlreadyMinted + amount > amountForDevs)
             revert Launchpeg__MaxSupplyForDevReached();
 
-        amountMintedByDevs = amountAlreadyMinted + amount;
+        amountMintedByDevs = (amountAlreadyMinted + amount).toUint128();
 
         _mint(msg.sender, amount);
 
@@ -239,10 +243,11 @@ contract ERC1155SingleBundle is
             pmDataSet.indexes[msg.sender] = pmDataSet.preMintDataArr.length;
         }
 
-        amountMintedDuringPreMint = amountAlreadyPreMinted + amount;
+        amountMintedDuringPreMint = (amountAlreadyPreMinted + amount)
+            .toUint128();
         allowlist[msg.sender] = userAllowlistAmount - amount;
 
-        uint256 totalPrice = preMintPrice * amount;
+        uint256 totalPrice = uint256(preMintPrice) * uint256(amount);
         _refundIfOver(totalPrice);
 
         emit PreMint(msg.sender, amount, totalPrice);
@@ -341,7 +346,7 @@ contract ERC1155SingleBundle is
             revert Launchpeg__MaxSupplyReached();
         }
 
-        amountMintedDuringPublicSale += amount;
+        amountMintedDuringPublicSale += amount.toUint128();
 
         _mint(msg.sender, amount);
         _refundIfOver(publicSalePrice * amount);
@@ -373,7 +378,7 @@ contract ERC1155SingleBundle is
         if (newPreMintStartTime > publicSaleStartTime)
             revert Launchpeg__InvalidPhases();
 
-        preMintStartTime = newPreMintStartTime;
+        preMintStartTime = newPreMintStartTime.toUint128();
         emit PreMintStartTimeSet(newPreMintStartTime);
     }
 
@@ -383,7 +388,7 @@ contract ERC1155SingleBundle is
         if (newPublicSaleStartTime > publicSaleEndTime)
             revert Launchpeg__InvalidPhases();
 
-        publicSaleStartTime = newPublicSaleStartTime;
+        publicSaleStartTime = newPublicSaleStartTime.toUint128();
         emit PublicSaleStartTimeSet(newPublicSaleStartTime);
     }
 
@@ -393,7 +398,7 @@ contract ERC1155SingleBundle is
         if (newPublicSaleEndTime < publicSaleStartTime)
             revert Launchpeg__InvalidPhases();
 
-        publicSaleEndTime = newPublicSaleEndTime;
+        publicSaleEndTime = newPublicSaleEndTime.toUint128();
         emit PublicSaleEndTimeSet(newPublicSaleEndTime);
     }
 
@@ -404,7 +409,7 @@ contract ERC1155SingleBundle is
             revert Launchpeg__MaxSupplyForDevReached();
         }
 
-        amountForDevs = newAmountForDevs;
+        amountForDevs = newAmountForDevs.toUint128();
         emit AmountForDevsSet(newAmountForDevs);
     }
 
@@ -415,7 +420,7 @@ contract ERC1155SingleBundle is
             revert Launchpeg__MaxSupplyReached();
         }
 
-        amountForPreMint = newAmountForPreMint;
+        amountForPreMint = newAmountForPreMint.toUint128();
         emit AmountForPreMintSet(newAmountForPreMint);
     }
 
@@ -425,7 +430,7 @@ contract ERC1155SingleBundle is
         if (newPreMintPrice > publicSalePrice)
             revert Launchpeg__InvalidAllowlistPrice();
 
-        preMintPrice = newPreMintPrice;
+        preMintPrice = newPreMintPrice.toUint128();
         emit PreMintPriceSet(newPreMintPrice);
     }
 
@@ -435,7 +440,7 @@ contract ERC1155SingleBundle is
         if (newPublicSalePrice < preMintPrice)
             revert Launchpeg__InvalidAllowlistPrice();
 
-        publicSalePrice = newPublicSalePrice;
+        publicSalePrice = newPublicSalePrice.toUint128();
         emit PublicSalePriceSet(newPublicSalePrice);
     }
 
@@ -450,14 +455,14 @@ contract ERC1155SingleBundle is
                 amountForDevs
         ) revert Launchpeg__LargerCollectionSizeNeeded();
 
-        collectionSize = newCollectionSize;
+        collectionSize = newCollectionSize.toUint128();
         emit CollectionSizeSet(newCollectionSize);
     }
 
     function setMaxPerAddressDuringMint(
         uint256 newMaxAmountPerUser
     ) external onlyOwner contractNotLocked {
-        maxPerAddressDuringMint = newMaxAmountPerUser;
+        maxPerAddressDuringMint = newMaxAmountPerUser.toUint128();
         emit MaxPerAddressDuringMintSet(newMaxAmountPerUser);
     }
 
