@@ -29,9 +29,16 @@ abstract contract ERC1155LaunchpegBase is
     bytes32 public constant PROJECT_OWNER_ROLE =
         keccak256("PROJECT_OWNER_ROLE");
 
+    /**
+     * @dev OpenSea's filter registry and subscription address
+     */
+    address private constant OPENSEA_FILTER_REGISTRY =
+        0x000000000000AAeB6D7670E522A718067333cd4E;
+    address private constant OPENSEA_SUBSCRIPTION =
+        0x3cc6CddA760b79bAfa08dF41ECFA224f810dCeB6;
+
     /// @notice Contract filtering allowed operators, preventing unauthorized contract to transfer NFTs
     /// By default, Launchpeg contracts are subscribed to OpenSea's Curated Subscription Address at 0x3cc6CddA760b79bAfa08dF41ECFA224f810dCeB6
-
     IOperatorFilterRegistry public operatorFilterRegistry;
 
     /// @notice The fees collected by Joepegs on the sale benefits
@@ -143,13 +150,13 @@ abstract contract ERC1155LaunchpegBase is
 
         // Initialize the operator filter registry and subscribe to OpenSea's list
         IOperatorFilterRegistry _operatorFilterRegistry = IOperatorFilterRegistry(
-                0x000000000000AAeB6D7670E522A718067333cd4E
+                OPENSEA_FILTER_REGISTRY
             );
 
         if (address(_operatorFilterRegistry).code.length > 0) {
             _operatorFilterRegistry.registerAndSubscribe(
                 address(this),
-                0x3cc6CddA760b79bAfa08dF41ECFA224f810dCeB6
+                OPENSEA_SUBSCRIPTION
             );
         }
 
@@ -252,22 +259,16 @@ abstract contract ERC1155LaunchpegBase is
 
         uint256 amount = address(this).balance;
         uint256 fee;
-        bool sent;
+        uint256 feePercent = joeFeePercent;
 
-        if (joeFeePercent > 0) {
-            fee = (amount * joeFeePercent) / BASIS_POINT_PRECISION;
+        if (feePercent > 0) {
+            fee = (amount * feePercent) / BASIS_POINT_PRECISION;
             amount = amount - fee;
 
-            (sent, ) = joeFeeCollector.call{value: fee}("");
-            if (!sent) {
-                revert Launchpeg__TransferFailed();
-            }
+            _send(joeFeeCollector, fee);
         }
 
-        (sent, ) = to.call{value: amount}("");
-        if (!sent) {
-            revert Launchpeg__TransferFailed();
-        }
+        _send(to, amount);
 
         emit AvaxWithdraw(to, amount, fee);
     }
@@ -338,6 +339,18 @@ abstract contract ERC1155LaunchpegBase is
             if (!registry.isOperatorAllowed(address(this), operator)) {
                 revert OperatorNotAllowed(operator);
             }
+        }
+    }
+
+    /**
+     * @dev Sends AVAX to the given address
+     * @param to Address to send AVAX to
+     * @param amount Amount of AVAX to send
+     */
+    function _send(address to, uint256 amount) internal {
+        (bool success, ) = to.call{value: amount}("");
+        if (!success) {
+            revert Launchpeg__TransferFailed();
         }
     }
 
