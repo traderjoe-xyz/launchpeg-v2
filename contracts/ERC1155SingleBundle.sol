@@ -13,61 +13,29 @@ contract ERC1155SingleBundle is
 {
     using SafeCast for uint256;
 
-    struct PreMintData {
-        address sender;
-        uint96 quantity;
-    }
+    uint128 public override collectionSize;
+    uint128 public override maxPerAddressDuringMint;
 
-    struct PreMintDataSet {
-        PreMintData[] preMintDataArr;
-        mapping(address => uint256) indexes;
-    }
+    uint128 public override amountForDevs;
+    uint128 public override amountMintedByDevs;
 
-    uint128 public collectionSize;
-    uint128 public maxPerAddressDuringMint;
+    uint128 public override preMintPrice;
+    uint128 public override preMintStartTime;
 
-    uint128 public amountForDevs;
-    uint128 public amountMintedByDevs;
+    uint128 public override amountForPreMint;
+    uint128 public override amountMintedDuringPreMint;
+    uint256 public override amountClaimedDuringPreMint;
 
-    uint128 public preMintPrice;
-    uint128 public preMintStartTime;
+    uint128 public override publicSalePrice;
+    uint128 public override publicSaleStartTime;
+    uint128 public override publicSaleEndTime;
+    uint128 public override amountMintedDuringPublicSale;
 
-    uint128 public amountForPreMint;
-    uint128 public amountMintedDuringPreMint;
-    uint256 public amountClaimedDuringPreMint;
-
-    uint128 public publicSalePrice;
-    uint128 public publicSaleStartTime;
-    uint128 public publicSaleEndTime;
-    uint128 public amountMintedDuringPublicSale;
-
-    mapping(address => uint256) public allowlist;
-    mapping(address => uint256) public numberMinted;
+    mapping(address => uint256) public override allowlist;
+    mapping(address => uint256) public override numberMinted;
 
     uint256[] private _tokenSet;
     PreMintDataSet private _pendingPreMints;
-
-    event AllowlistSeeded();
-    event PreMintStartTimeSet(uint256 preMintStartTime);
-    event PublicSaleStartTimeSet(uint256 publicSaleStartTime);
-    event PublicSaleEndTimeSet(uint256 publicSaleEndTime);
-    event AmountForDevsSet(uint256 amountForDevs);
-    event AmountForPreMintSet(uint256 amountForPreMint);
-    event PreMintPriceSet(uint256 preMintPrice);
-    event PublicSalePriceSet(uint256 publicSalePrice);
-    event MaxPerAddressDuringMintSet(uint256 maxPerAddressDuringMint);
-    event CollectionSizeSet(uint256 collectionSize);
-    event PhaseInitialized(
-        uint256 preMintStartTime,
-        uint256 publicSaleStartTime,
-        uint256 publicSaleEndTime,
-        uint256 preMintPrice,
-        uint256 salePrice,
-        uint256 withdrawAVAXStartTime
-    );
-    event DevMint(address indexed sender, uint256 quantity);
-    event PreMint(address indexed sender, uint256 quantity, uint256 price);
-    event TokenSetUpdated(uint256[] tokenSet);
 
     modifier isEOA() {
         if (tx.origin != msg.sender) {
@@ -87,7 +55,7 @@ contract ERC1155SingleBundle is
         uint256 initialAmountForPreMint,
         uint256 initialMaxPerAddressDuringMint,
         uint256[] calldata initialTokenSet
-    ) external initializer {
+    ) external override initializer {
         __ERC1155LaunchpegBase_init(initData);
 
         if (amountForDevs + amountForPreMint > initialMaxSupply) {
@@ -108,7 +76,7 @@ contract ERC1155SingleBundle is
         uint256 initialPublicSaleEndTime,
         uint256 initialPreMintPrice,
         uint256 initialPublicSalePrice
-    ) external onlyOwner atPhase(Phase.NotStarted) {
+    ) external override onlyOwner atPhase(Phase.NotStarted) {
         if (
             initialPreMintStartTime < block.timestamp ||
             initialPublicSaleStartTime < initialPreMintStartTime ||
@@ -140,7 +108,7 @@ contract ERC1155SingleBundle is
         );
     }
 
-    function tokenSet() external view returns (uint256[] memory) {
+    function tokenSet() external view override returns (uint256[] memory) {
         return _tokenSet;
     }
 
@@ -174,12 +142,15 @@ contract ERC1155SingleBundle is
     function amountOfUsersWaitingForPremintClaim()
         external
         view
+        override
         returns (uint256)
     {
         return _pendingPreMints.preMintDataArr.length;
     }
 
-    function userPendingPreMints(address user) public view returns (uint256) {
+    function userPendingPreMints(
+        address user
+    ) public view override returns (uint256) {
         uint256 userIndex = _pendingPreMints.indexes[user];
 
         if (userIndex == 0) {
@@ -199,7 +170,13 @@ contract ERC1155SingleBundle is
 
     function devMint(
         uint256 amount
-    ) external whenNotPaused onlyOwnerOrRole(PROJECT_OWNER_ROLE) nonReentrant {
+    )
+        external
+        override
+        whenNotPaused
+        onlyOwnerOrRole(PROJECT_OWNER_ROLE)
+        nonReentrant
+    {
         uint256 amountAlreadyMinted = amountMintedByDevs;
 
         if (amountAlreadyMinted + amount > amountForDevs)
@@ -214,7 +191,14 @@ contract ERC1155SingleBundle is
 
     function preMint(
         uint96 amount
-    ) external payable whenNotPaused atPhase(Phase.PreMint) nonReentrant {
+    )
+        external
+        payable
+        override
+        whenNotPaused
+        atPhase(Phase.PreMint)
+        nonReentrant
+    {
         if (amount == 0) {
             revert Launchpeg__InvalidQuantity();
         }
@@ -253,7 +237,7 @@ contract ERC1155SingleBundle is
         emit PreMint(msg.sender, amount, totalPrice);
     }
 
-    function claimPremint() external whenNotPaused nonReentrant {
+    function claimPremint() external override whenNotPaused nonReentrant {
         if (block.timestamp < publicSaleStartTime) {
             revert Launchpeg__WrongPhase();
         }
@@ -288,7 +272,7 @@ contract ERC1155SingleBundle is
 
     function batchClaimPreMint(
         uint256 numberOfClaims
-    ) external whenNotPaused nonReentrant {
+    ) external override whenNotPaused nonReentrant {
         if (block.timestamp < publicSaleStartTime) {
             revert Launchpeg__WrongPhase();
         }
@@ -328,6 +312,7 @@ contract ERC1155SingleBundle is
     )
         external
         payable
+        override
         whenNotPaused
         atPhase(Phase.PublicSale)
         nonReentrant
@@ -352,7 +337,9 @@ contract ERC1155SingleBundle is
         _refundIfOver(publicSalePrice * amount);
     }
 
-    function updateTokenSet(uint256[] calldata newTokenSet) external onlyOwner {
+    function updateTokenSet(
+        uint256[] calldata newTokenSet
+    ) external override onlyOwner {
         _tokenSet = newTokenSet;
         emit TokenSetUpdated(newTokenSet);
     }
@@ -360,7 +347,7 @@ contract ERC1155SingleBundle is
     function seedAllowlist(
         address[] calldata addresses,
         uint256[] calldata amounts
-    ) external onlyOwner {
+    ) external override onlyOwner {
         uint256 addressesLength = addresses.length;
         if (addressesLength != amounts.length) {
             revert Launchpeg__WrongAddressesAndNumSlotsLength();
@@ -374,7 +361,7 @@ contract ERC1155SingleBundle is
 
     function setPreMintStartTime(
         uint256 newPreMintStartTime
-    ) external onlyOwner contractNotLocked {
+    ) external override onlyOwner contractNotLocked {
         if (newPreMintStartTime > publicSaleStartTime)
             revert Launchpeg__InvalidPhases();
 
@@ -384,7 +371,7 @@ contract ERC1155SingleBundle is
 
     function setPublicSaleStartTime(
         uint256 newPublicSaleStartTime
-    ) external onlyOwner contractNotLocked {
+    ) external override onlyOwner contractNotLocked {
         if (newPublicSaleStartTime > publicSaleEndTime)
             revert Launchpeg__InvalidPhases();
 
@@ -394,7 +381,7 @@ contract ERC1155SingleBundle is
 
     function setPublicSaleEndTime(
         uint256 newPublicSaleEndTime
-    ) external onlyOwner contractNotLocked {
+    ) external override onlyOwner contractNotLocked {
         if (newPublicSaleEndTime < publicSaleStartTime)
             revert Launchpeg__InvalidPhases();
 
@@ -404,7 +391,7 @@ contract ERC1155SingleBundle is
 
     function setAmountForDevs(
         uint256 newAmountForDevs
-    ) external onlyOwner contractNotLocked {
+    ) external override onlyOwner contractNotLocked {
         if (amountMintedByDevs > newAmountForDevs) {
             revert Launchpeg__MaxSupplyForDevReached();
         }
@@ -415,7 +402,7 @@ contract ERC1155SingleBundle is
 
     function setAmountForPreMint(
         uint256 newAmountForPreMint
-    ) external onlyOwner contractNotLocked {
+    ) external override onlyOwner contractNotLocked {
         if (amountMintedDuringPreMint > newAmountForPreMint) {
             revert Launchpeg__MaxSupplyReached();
         }
@@ -426,7 +413,7 @@ contract ERC1155SingleBundle is
 
     function setPreMintPrice(
         uint256 newPreMintPrice
-    ) external onlyOwner contractNotLocked {
+    ) external override onlyOwner contractNotLocked {
         if (newPreMintPrice > publicSalePrice)
             revert Launchpeg__InvalidAllowlistPrice();
 
@@ -436,7 +423,7 @@ contract ERC1155SingleBundle is
 
     function setPublicSalePrice(
         uint256 newPublicSalePrice
-    ) external onlyOwner contractNotLocked {
+    ) external override onlyOwner contractNotLocked {
         if (newPublicSalePrice < preMintPrice)
             revert Launchpeg__InvalidAllowlistPrice();
 
@@ -446,7 +433,7 @@ contract ERC1155SingleBundle is
 
     function setCollectionSize(
         uint256 newCollectionSize
-    ) external onlyOwner contractNotLocked {
+    ) external override onlyOwner contractNotLocked {
         if (
             newCollectionSize < amountForDevs + amountForPreMint ||
             newCollectionSize <
@@ -461,7 +448,7 @@ contract ERC1155SingleBundle is
 
     function setMaxPerAddressDuringMint(
         uint256 newMaxAmountPerUser
-    ) external onlyOwner contractNotLocked {
+    ) external override onlyOwner contractNotLocked {
         maxPerAddressDuringMint = newMaxAmountPerUser.toUint128();
         emit MaxPerAddressDuringMintSet(newMaxAmountPerUser);
     }

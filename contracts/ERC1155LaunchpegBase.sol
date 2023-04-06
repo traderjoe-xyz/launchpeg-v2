@@ -26,7 +26,7 @@ abstract contract ERC1155LaunchpegBase is
     uint256 private constant BASIS_POINT_PRECISION = 10_000;
 
     /// @notice Role granted to project owners
-    bytes32 public constant PROJECT_OWNER_ROLE =
+    bytes32 public constant override PROJECT_OWNER_ROLE =
         keccak256("PROJECT_OWNER_ROLE");
 
     /**
@@ -39,72 +39,25 @@ abstract contract ERC1155LaunchpegBase is
 
     /// @notice Contract filtering allowed operators, preventing unauthorized contract to transfer NFTs
     /// By default, Launchpeg contracts are subscribed to OpenSea's Curated Subscription Address at 0x3cc6CddA760b79bAfa08dF41ECFA224f810dCeB6
-    IOperatorFilterRegistry public operatorFilterRegistry;
+    IOperatorFilterRegistry public override operatorFilterRegistry;
 
     /// @notice The fees collected by Joepegs on the sale benefits
     /// @dev In basis points e.g 100 for 1%
-    uint256 public joeFeePercent;
+    uint256 public override joeFeePercent;
 
     /// @notice The address to which the fees on the sale will be sent
-    address public joeFeeCollector;
+    address public override joeFeeCollector;
 
     /// @notice Start time when funds can be withdrawn
-    uint256 public withdrawAVAXStartTime;
+    uint256 public override withdrawAVAXStartTime;
 
     /// @notice This boolean can be turned on to prevent any changes on the sale parameters.
     /// @dev Once set to true, it shouldn't be possible to turn it back to false.
-    bool public locked;
+    bool public override locked;
 
-    string public name;
+    string public override name;
 
-    string public symbol;
-
-    struct InitData {
-        address owner;
-        address royaltyReceiver;
-        uint256 joeFeePercent;
-        string collectionName;
-        string collectionSymbol;
-    }
-
-    enum Phase {
-        NotStarted,
-        DutchAuction,
-        PreMint,
-        Allowlist,
-        PublicSale,
-        Ended
-    }
-
-    /// @dev Emitted on updateOperatorFilterRegistryAddress()
-    /// @param operatorFilterRegistry New operator filter registry
-    event OperatorFilterRegistryUpdated(address operatorFilterRegistry);
-
-    /// @dev Emitted on _setDefaultRoyalty()
-    /// @param receiver Royalty fee collector
-    /// @param feePercent Royalty fee percent in basis point
-    event DefaultRoyaltySet(address indexed receiver, uint256 feePercent);
-
-    /// @dev Emitted on setWithdrawAVAXStartTime()
-    /// @param withdrawAVAXStartTime New withdraw AVAX start time
-    event WithdrawAVAXStartTimeSet(uint256 withdrawAVAXStartTime);
-
-    /// @dev Emitted on initializeJoeFee()
-    /// @param feePercent The fees collected by Joepegs on the sale benefits
-    /// @param feeCollector The address to which the fees on the sale will be sent
-    event JoeFeeInitialized(uint256 feePercent, address feeCollector);
-
-    /// @dev Emitted on withdrawAVAX()
-    /// @param sender The address that withdrew the tokens
-    /// @param amount Amount of AVAX transfered to `sender`
-    /// @param fee Amount of AVAX paid to the fee collector
-    event AvaxWithdraw(address indexed sender, uint256 amount, uint256 fee);
-
-    /// @dev Emitted on setURI()
-    /// @param uri The new base URI
-    event URISet(string uri);
-
-    event SaleParametersLocked();
+    string public override symbol;
 
     /// @notice Allow spending tokens from addresses with balance
     /// Note that this still allows listings and marketplaces with escrow to transfer tokens if transferred
@@ -203,7 +156,7 @@ abstract contract ERC1155LaunchpegBase is
     /// @dev This sets the URI for revealed tokens
     /// Only callable by project owner
     /// @param newURI Base URI to be set
-    function setURI(string calldata newURI) external onlyOwner {
+    function setURI(string calldata newURI) external override onlyOwner {
         _setURI(newURI);
         emit URISet(newURI);
     }
@@ -212,7 +165,7 @@ abstract contract ERC1155LaunchpegBase is
     /// @param newWithdrawAVAXStartTime New public sale end time
     function setWithdrawAVAXStartTime(
         uint256 newWithdrawAVAXStartTime
-    ) external onlyOwner {
+    ) external override onlyOwner {
         withdrawAVAXStartTime = newWithdrawAVAXStartTime;
         emit WithdrawAVAXStartTimeSet(newWithdrawAVAXStartTime);
     }
@@ -220,7 +173,7 @@ abstract contract ERC1155LaunchpegBase is
     function setRoyaltyInfo(
         address receiver,
         uint96 feePercent
-    ) external onlyOwner {
+    ) external override onlyOwner {
         // Royalty fees are limited to 25%
         if (feePercent > 2_500) {
             revert Launchpeg__InvalidRoyaltyInfo();
@@ -233,13 +186,18 @@ abstract contract ERC1155LaunchpegBase is
     /// @param newOperatorFilterRegistry New operator filter registry
     function setOperatorFilterRegistryAddress(
         address newOperatorFilterRegistry
-    ) external onlyOwner {
+    ) external override onlyOwner {
         _updateOperatorFilterRegistryAddress(
             IOperatorFilterRegistry(newOperatorFilterRegistry)
         );
     }
 
-    function lockSaleParameters() external onlyOwner contractNotLocked {
+    function lockSaleParameters()
+        external
+        override
+        onlyOwner
+        contractNotLocked
+    {
         locked = true;
 
         emit SaleParametersLocked();
@@ -249,7 +207,7 @@ abstract contract ERC1155LaunchpegBase is
     /// @param to Recipient of the earned AVAX
     function withdrawAVAX(
         address to
-    ) external onlyOwnerOrRole(PROJECT_OWNER_ROLE) nonReentrant {
+    ) external override onlyOwnerOrRole(PROJECT_OWNER_ROLE) nonReentrant {
         if (
             block.timestamp < withdrawAVAXStartTime ||
             withdrawAVAXStartTime == 0
