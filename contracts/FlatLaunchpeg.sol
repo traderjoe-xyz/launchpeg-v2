@@ -23,7 +23,7 @@ contract FlatLaunchpeg is BaseLaunchpeg, IFlatLaunchpeg {
     /// @param publicSaleEndTime Public sale end time in seconds
     /// @param allowlistPrice Price of the allowlist sale in Avax
     /// @param salePrice Price of the public sale in Avax
-    event Initialized(
+    event PhaseInitialized(
         uint256 preMintStartTime,
         uint256 allowlistStartTime,
         uint256 publicSaleStartTime,
@@ -80,7 +80,7 @@ contract FlatLaunchpeg is BaseLaunchpeg, IFlatLaunchpeg {
         publicSaleStartTime = _publicSaleStartTime;
         publicSaleEndTime = _publicSaleEndTime;
 
-        emit Initialized(
+        emit PhaseInitialized(
             preMintStartTime,
             allowlistStartTime,
             publicSaleStartTime,

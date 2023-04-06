@@ -63,7 +63,7 @@ contract Launchpeg is BaseLaunchpeg, ILaunchpeg {
     /// @param publicSaleStartTime Public sale start time in seconds
     /// @param publicSaleEndTime Public sale end time in seconds
     /// @param publicSaleDiscountPercent Discount applied to the last auction price during the public sale
-    event Initialized(
+    event PhaseInitialized(
         uint256 auctionSaleStartTime,
         uint256 auctionStartPrice,
         uint256 auctionEndPrice,
@@ -170,7 +170,7 @@ contract Launchpeg is BaseLaunchpeg, ILaunchpeg {
         publicSaleEndTime = _publicSaleEndTime;
         publicSaleDiscountPercent = _publicSaleDiscountPercent;
 
-        emit Initialized(
+        emit PhaseInitialized(
             auctionSaleStartTime,
             auctionStartPrice,
             auctionEndPrice,
