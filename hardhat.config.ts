@@ -8,6 +8,7 @@ import 'hardhat-contract-sizer'
 import 'hardhat-deploy'
 import 'hardhat-deploy-ethers'
 import 'solidity-coverage'
+import 'hardhat-gas-reporter'
 import { HardhatUserConfig } from 'hardhat/config'
 import glob from 'glob'
 import path from 'path'
@@ -35,14 +36,14 @@ const config: HardhatUserConfig = {
     hardhat: {},
     fuji: {
       url: 'https://api.avax-test.network/ext/bc/C/rpc',
-      gasPrice: 225000000000,
+      gasPrice: 25000000000,
       chainId: 43113,
       accounts: process.env.DEPLOY_PRIVATE_KEY ? [process.env.DEPLOY_PRIVATE_KEY] : [],
       saveDeployments: true,
     },
     avalanche: {
       url: 'https://api.avax.network/ext/bc/C/rpc',
-      gasPrice: 225000000000,
+      gasPrice: 25000000000,
       chainId: 43114,
       accounts: process.env.DEPLOY_PRIVATE_KEY ? [process.env.DEPLOY_PRIVATE_KEY] : [],
     },
@@ -58,6 +59,13 @@ const config: HardhatUserConfig = {
       avalanche: process.env.SNOWTRACE_API_KEY,
       avalancheFujiTestnet: process.env.SNOWTRACE_API_KEY,
     },
+  },
+  gasReporter: {
+    currency: 'USD',
+    gasPrice: 25_000_000_000,
+    enabled: true,
+    outputFile: 'gas-report.txt',
+    noColors: true,
   },
 }
 

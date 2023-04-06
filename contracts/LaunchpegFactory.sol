@@ -1,20 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.4;
 
-import "@openzeppelin/contracts-upgradeable/access/IAccessControlUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts/proxy/Clones.sol";
-import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
+import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
-import "./interfaces/IBatchReveal.sol";
-import "./interfaces/IFlatLaunchpeg.sol";
-import "./interfaces/ILaunchpeg.sol";
-import "./interfaces/ILaunchpegFactory.sol";
-import "./interfaces/IPendingOwnableUpgradeable.sol";
-import "./interfaces/ISafePausableUpgradeable.sol";
-import "./utils/SafeAccessControlEnumerableUpgradeable.sol";
 import "./LaunchpegErrors.sol";
+import {IBatchReveal} from "./interfaces/IBatchReveal.sol";
+import {IBaseLaunchpeg} from "./interfaces/IBaseLaunchpeg.sol";
+import {IFlatLaunchpeg} from "./interfaces/IFlatLaunchpeg.sol";
+import {ILaunchpeg} from "./interfaces/ILaunchpeg.sol";
+import {ERC1155LaunchpegBase} from "./ERC1155LaunchpegBase.sol";
+import {ERC1155SingleBundle} from "./ERC1155SingleBundle.sol";
+import {ILaunchpegFactory} from "./interfaces/ILaunchpegFactory.sol";
+import {IPendingOwnableUpgradeable} from "./interfaces/IPendingOwnableUpgradeable.sol";
+import {ISafePausableUpgradeable} from "./interfaces/ISafePausableUpgradeable.sol";
+import {SafeAccessControlEnumerableUpgradeable} from "./utils/SafeAccessControlEnumerableUpgradeable.sol";
 
 /// @title Launchpeg Factory
 /// @author Trader Joe
@@ -49,9 +51,15 @@ contract LaunchpegFactory is
         uint256 amountForAllowlist
     );
 
+    event ERC1155SingleBundleCreated(address indexed erc1155SingleBundle);
+    event ProxyAdminFor1155Created(address indexed proxyAdmin);
+
     event SetLaunchpegImplementation(address indexed launchpegImplementation);
     event SetFlatLaunchpegImplementation(
         address indexed flatLaunchpegImplementation
+    );
+    event Set1155SingleBundleImplementation(
+        address indexed erc1155SingleBundleImplementation
     );
     event SetBatchReveal(address indexed batchReveal);
     event SetDefaultJoeFeePercent(uint256 joeFeePercent);
@@ -79,16 +87,20 @@ contract LaunchpegFactory is
     /// @notice Batch reveal address
     address public override batchReveal;
 
+    address public erc1155SingleBundleImplementation;
+
     /// @notice Initializes the Launchpeg factory
     /// @dev Uses clone factory pattern to save space
     /// @param _launchpegImplementation Launchpeg contract to be cloned
     /// @param _flatLaunchpegImplementation FlatLaunchpeg contract to be cloned
+    /// @param _erc1155SingleBundleImplementation ERC1155SingleBundle contract to be cloned
     /// @param _batchReveal Batch reveal address
     /// @param _joeFeePercent Default fee percentage
     /// @param _joeFeeCollector Default fee collector
     function initialize(
         address _launchpegImplementation,
         address _flatLaunchpegImplementation,
+        address _erc1155SingleBundleImplementation,
         address _batchReveal,
         uint256 _joeFeePercent,
         address _joeFeeCollector
@@ -99,6 +111,9 @@ contract LaunchpegFactory is
             revert LaunchpegFactory__InvalidImplementation();
         }
         if (_flatLaunchpegImplementation == address(0)) {
+            revert LaunchpegFactory__InvalidImplementation();
+        }
+        if (_erc1155SingleBundleImplementation == address(0)) {
             revert LaunchpegFactory__InvalidImplementation();
         }
         if (_batchReveal == address(0)) {
@@ -113,6 +128,7 @@ contract LaunchpegFactory is
 
         launchpegImplementation = _launchpegImplementation;
         flatLaunchpegImplementation = _flatLaunchpegImplementation;
+        erc1155SingleBundleImplementation = _erc1155SingleBundleImplementation;
         batchReveal = _batchReveal;
         joeFeePercent = _joeFeePercent;
         joeFeeCollector = _joeFeeCollector;
@@ -121,12 +137,9 @@ contract LaunchpegFactory is
     /// @notice Returns the number of Launchpegs
     /// @param _launchpegType Type of Launchpeg to consider
     /// @return LaunchpegNumber The number of Launchpegs ever created
-    function numLaunchpegs(uint256 _launchpegType)
-        external
-        view
-        override
-        returns (uint256)
-    {
+    function numLaunchpegs(
+        uint256 _launchpegType
+    ) external view override returns (uint256) {
         return allLaunchpegs[_launchpegType].length;
     }
 
@@ -264,13 +277,77 @@ contract LaunchpegFactory is
         return flatLaunchpeg;
     }
 
+    function create1155SingleBundle(
+        string calldata name,
+        string calldata symbol,
+        address royaltyReceiver,
+        uint256 maxPerAddressDuringMint,
+        uint256 collectionSize,
+        uint256 amountForDevs,
+        uint256 amountForPreMint,
+        uint256[] calldata tokenSet,
+        bool isUpgradeable
+    ) external onlyOwner returns (address) {
+        // Packing data to avoid stack too deep error
+        ERC1155LaunchpegBase.InitData memory initData = ERC1155LaunchpegBase
+            .InitData({
+                owner: msg.sender,
+                collectionName: name,
+                collectionSymbol: symbol,
+                royaltyReceiver: royaltyReceiver,
+                joeFeePercent: joeFeePercent
+            });
+
+        address launchpeg;
+        if (isUpgradeable) {
+            bytes memory data = abi.encodeWithSelector(
+                ERC1155SingleBundle.initialize.selector,
+                initData,
+                collectionSize,
+                amountForDevs,
+                amountForPreMint,
+                maxPerAddressDuringMint,
+                tokenSet
+            );
+
+            ProxyAdmin proxyAdmin = new ProxyAdmin();
+
+            TransparentUpgradeableProxy launchpegProxy = new TransparentUpgradeableProxy(
+                    erc1155SingleBundleImplementation,
+                    address(proxyAdmin),
+                    data
+                );
+
+            proxyAdmin.transferOwnership(msg.sender);
+
+            launchpeg = address(launchpegProxy);
+
+            emit ProxyAdminFor1155Created(address(proxyAdmin));
+        } else {
+            launchpeg = Clones.clone(erc1155SingleBundleImplementation);
+            ERC1155SingleBundle(launchpeg).initialize(
+                initData,
+                collectionSize,
+                amountForDevs,
+                amountForPreMint,
+                maxPerAddressDuringMint,
+                tokenSet
+            );
+        }
+
+        isLaunchpeg[2][launchpeg] = true;
+        allLaunchpegs[2].push(launchpeg);
+
+        emit ERC1155SingleBundleCreated(launchpeg);
+
+        return launchpeg;
+    }
+
     /// @notice Set address for launchpegImplementation
     /// @param _launchpegImplementation New launchpegImplementation
-    function setLaunchpegImplementation(address _launchpegImplementation)
-        external
-        override
-        onlyOwner
-    {
+    function setLaunchpegImplementation(
+        address _launchpegImplementation
+    ) external override onlyOwner {
         if (_launchpegImplementation == address(0)) {
             revert LaunchpegFactory__InvalidImplementation();
         }
@@ -292,6 +369,19 @@ contract LaunchpegFactory is
         emit SetFlatLaunchpegImplementation(_flatLaunchpegImplementation);
     }
 
+    function setERC1155SingleBundleImplementation(
+        address _erc1155SingleBundleImplementation
+    ) external onlyOwner {
+        if (_erc1155SingleBundleImplementation == address(0)) {
+            revert LaunchpegFactory__InvalidImplementation();
+        }
+
+        erc1155SingleBundleImplementation = _erc1155SingleBundleImplementation;
+        emit Set1155SingleBundleImplementation(
+            _erc1155SingleBundleImplementation
+        );
+    }
+
     /// @notice Set batch reveal address
     /// @param _batchReveal New batch reveal
     function setBatchReveal(address _batchReveal) external override onlyOwner {
@@ -305,11 +395,9 @@ contract LaunchpegFactory is
 
     /// @notice Set percentage of protocol fees
     /// @param _joeFeePercent New joeFeePercent
-    function setDefaultJoeFeePercent(uint256 _joeFeePercent)
-        external
-        override
-        onlyOwner
-    {
+    function setDefaultJoeFeePercent(
+        uint256 _joeFeePercent
+    ) external override onlyOwner {
         if (_joeFeePercent > 10_000) {
             revert Launchpeg__InvalidPercent();
         }
@@ -320,11 +408,9 @@ contract LaunchpegFactory is
 
     /// @notice Set default address to collect protocol fees
     /// @param _joeFeeCollector New collector address
-    function setDefaultJoeFeeCollector(address _joeFeeCollector)
-        external
-        override
-        onlyOwner
-    {
+    function setDefaultJoeFeeCollector(
+        address _joeFeeCollector
+    ) external override onlyOwner {
         if (_joeFeeCollector == address(0)) {
             revert Launchpeg__InvalidJoeFeeCollector();
         }
@@ -343,20 +429,15 @@ contract LaunchpegFactory is
     /// @notice Revokes LAUNCHPEG_PAUSER_ROLE from an address. The
     /// address will not be able to pause any Launchpeg collection
     /// @param _pauser Pauser address
-    function removeLaunchpegPauser(address _pauser)
-        external
-        override
-    {
+    function removeLaunchpegPauser(address _pauser) external override {
         revokeRole(LAUNCHPEG_PAUSER_ROLE, _pauser);
     }
 
     /// @notice Pause specified Launchpeg
     /// @param _launchpeg Launchpeg address
-    function pauseLaunchpeg(address _launchpeg)
-        external
-        override
-        onlyOwnerOrRole(LAUNCHPEG_PAUSER_ROLE)
-    {
+    function pauseLaunchpeg(
+        address _launchpeg
+    ) external override onlyOwnerOrRole(LAUNCHPEG_PAUSER_ROLE) {
         ISafePausableUpgradeable(_launchpeg).pause();
     }
 }

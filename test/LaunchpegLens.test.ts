@@ -4,21 +4,23 @@ import { Contract, ContractFactory } from 'ethers'
 import { config as hardhatConfig, ethers, network, upgrades } from 'hardhat'
 import { getDefaultLaunchpegConfig, LaunchpegConfig } from './utils/helpers'
 
-// skip LaunchpegLens test suite
-describe.skip('LaunchpegLens', function () {
+describe('LaunchpegLens', function () {
   const LAUNCHPEG_TYPE = 1
   const FLAT_LAUNCHPEG_TYPE = 2
+  const ERC1155_SINGLE_BUNDLE_TYPE = 3
 
   const launchpegFactoryV1Address: string = '0x7BFd7192E76D950832c77BB412aaE841049D8D9B'
 
   let launchpegCF: ContractFactory
   let flatLaunchpegCF: ContractFactory
+  let erc1155SingleBundleCF: ContractFactory
   let launchpegFactoryCF: ContractFactory
   let batchRevealCF: ContractFactory
   let lensCF: ContractFactory
 
   let launchpegImpl: Contract
   let flatLaunchpegImpl: Contract
+  let erc1155SingleBundleImpl: Contract
   let launchpegFactory: Contract
   let batchReveal: Contract
   let lens: Contract
@@ -33,6 +35,7 @@ describe.skip('LaunchpegLens', function () {
   before(async () => {
     launchpegCF = await ethers.getContractFactory('Launchpeg')
     flatLaunchpegCF = await ethers.getContractFactory('FlatLaunchpeg')
+    erc1155SingleBundleCF = await ethers.getContractFactory('ERC1155SingleBundle')
     launchpegFactoryCF = await ethers.getContractFactory('LaunchpegFactory')
     batchRevealCF = await ethers.getContractFactory('BatchReveal')
     lensCF = await ethers.getContractFactory('LaunchpegLens')
@@ -64,10 +67,12 @@ describe.skip('LaunchpegLens', function () {
       await batchReveal.initialize()
       launchpegImpl = await launchpegCF.deploy()
       flatLaunchpegImpl = await flatLaunchpegCF.deploy()
+      erc1155SingleBundleImpl = await erc1155SingleBundleCF.deploy()
 
       launchpegFactory = await upgrades.deployProxy(launchpegFactoryCF, [
         launchpegImpl.address,
         flatLaunchpegImpl.address,
+        erc1155SingleBundleImpl.address,
         batchReveal.address,
         config.joeFeePercent,
         royaltyReceiver.address,
@@ -106,6 +111,20 @@ describe.skip('LaunchpegLens', function () {
       config.amountForDevs,
       config.amountForAllowlist,
       config.enableBatchReveal
+    )
+  }
+
+  const create1155SingleBundle = async () => {
+    await launchpegFactory.create1155SingleBundle(
+      'JoePEG',
+      'JOEPEG',
+      royaltyReceiver.address,
+      config.maxPerAddressDuringMint,
+      config.collectionSize,
+      config.amountForDevs,
+      config.amountForAllowlist,
+      [0],
+      true
     )
   }
 
@@ -169,6 +188,7 @@ describe.skip('LaunchpegLens', function () {
     let lpWithoutReveal: string
     let flpWithReveal: string
     let flpWithoutReveal: string
+    let erc1155sb: string
 
     const expectLensDataEqual = (
       lensData: any,
@@ -217,6 +237,9 @@ describe.skip('LaunchpegLens', function () {
 
       await createFlatLaunchpeg(false)
       flpWithoutReveal = await launchpegFactory.allLaunchpegs(1, 1)
+
+      await create1155SingleBundle()
+      erc1155sb = await launchpegFactory.allLaunchpegs(2, 0)
     })
 
     it('Should return Launchpeg type and version', async () => {
@@ -224,6 +247,7 @@ describe.skip('LaunchpegLens', function () {
       expect(await lens.getLaunchpegType(lpWithoutReveal)).to.eql([1, 2])
       expect(await lens.getLaunchpegType(flpWithReveal)).to.eql([2, 2])
       expect(await lens.getLaunchpegType(flpWithoutReveal)).to.eql([2, 2])
+      expect(await lens.getLaunchpegType(erc1155sb)).to.eql([3, 2])
     })
 
     it('Should return all Launchpegs by type and version', async () => {
@@ -241,6 +265,17 @@ describe.skip('LaunchpegLens', function () {
       let flpAddresses = lensDataArr.map((data: any) => data.id)
       expect(lensDataArr.length).to.eq(2)
       expect(flpAddresses).to.eql([flpWithoutReveal, flpWithReveal])
+
+      lensDataArr = await lens.getLaunchpegsByTypeAndVersion(
+        ERC1155_SINGLE_BUNDLE_TYPE,
+        version,
+        numEntries,
+        lastIdx,
+        user
+      )
+      let sbAddresses = lensDataArr.map((data: any) => data.id)
+      expect(lensDataArr.length).to.eq(1)
+      expect(sbAddresses).to.eql([erc1155sb])
     })
 
     it('Should return Launchpeg data', async () => {
