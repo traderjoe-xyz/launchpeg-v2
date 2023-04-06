@@ -32,6 +32,7 @@ interface IERC1155LaunchpegBase {
     /// @param uri The new base URI
     event URISet(string uri);
 
+    /// @dev Emitted on lockSaleParameters()
     event SaleParametersLocked();
 
     struct InitData {

@@ -55,8 +55,10 @@ abstract contract ERC1155LaunchpegBase is
     /// @dev Once set to true, it shouldn't be possible to turn it back to false.
     bool public override locked;
 
+    /// @notice The name of the collection
     string public override name;
 
+    /// @notice The symbol of the collection
     string public override symbol;
 
     /// @notice Allow spending tokens from addresses with balance
@@ -75,6 +77,7 @@ abstract contract ERC1155LaunchpegBase is
         _;
     }
 
+    /// @notice The function updating sale parameters can only be called when the contract is not locked
     modifier contractNotLocked() {
         if (locked) {
             revert Launchpeg__SaleParametersLocked();
@@ -90,6 +93,8 @@ abstract contract ERC1155LaunchpegBase is
         _;
     }
 
+    /// @dev Initialize the contract
+    /// @param initData The data to initialize the contract
     function __ERC1155LaunchpegBase_init(
         InitData calldata initData
     ) internal onlyInitializing {
@@ -128,10 +133,16 @@ abstract contract ERC1155LaunchpegBase is
     /// @return phase Current phase
     function currentPhase() public view virtual returns (Phase);
 
+    /// @notice Returns the token URI
+    /// @param tokenId The token ID
+    /// @return uri The token URI
     function uri(uint256 tokenId) public view override returns (string memory) {
         return string(abi.encodePacked(super.uri(tokenId), tokenId.toString()));
     }
 
+    /// @notice Returns true if the interface is supported
+    /// @param interfaceId The interface ID
+    /// @return isSupported True if the interface is supported
     function supportsInterface(
         bytes4 interfaceId
     )
@@ -170,6 +181,9 @@ abstract contract ERC1155LaunchpegBase is
         emit WithdrawAVAXStartTimeSet(newWithdrawAVAXStartTime);
     }
 
+    /// @notice Set the Royalty info
+    /// @param receiver The address to which the royalties will be sent
+    /// @param feePercent The royalty fee in basis points
     function setRoyaltyInfo(
         address receiver,
         uint96 feePercent
@@ -192,6 +206,8 @@ abstract contract ERC1155LaunchpegBase is
         );
     }
 
+    /// @notice Updates on the sale parameters can be locked to prevent any changes
+    /// @dev Once locked, it won't be possible to turn it back to false.
     function lockSaleParameters()
         external
         override
@@ -231,6 +247,9 @@ abstract contract ERC1155LaunchpegBase is
         emit AvaxWithdraw(to, amount, fee);
     }
 
+    /// @dev `setApprovalForAll` wrapper to prevent the sender to approve a non-allowed operator
+    /// @param operator Address being approved
+    /// @param approved Whether the operator is approved or not
     function setApprovalForAll(
         address operator,
         bool approved
@@ -238,6 +257,12 @@ abstract contract ERC1155LaunchpegBase is
         super.setApprovalForAll(operator, approved);
     }
 
+    /// @dev `safeTransferFrom` wrapper to prevent a non-allowed operator to transfer the NFT
+    /// @param from Address to transfer from
+    /// @param to Address to transfer to
+    /// @param id TokenID to transfer
+    /// @param amount Amount to transfer
+    /// @param data Data to be used in the transfer callback
     function safeTransferFrom(
         address from,
         address to,
@@ -248,6 +273,12 @@ abstract contract ERC1155LaunchpegBase is
         super.safeTransferFrom(from, to, id, amount, data);
     }
 
+    /// @dev `safeBatchTransferFrom` wrapper to prevent a non-allowed operator to transfer the NFT
+    /// @param from Address to transfer from
+    /// @param to Address to transfer to
+    /// @param ids TokenIDs to transfer
+    /// @param amounts Amounts to transfer
+    /// @param data Data to be used in the transfer callback
     function safeBatchTransferFrom(
         address from,
         address to,
