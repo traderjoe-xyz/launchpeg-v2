@@ -369,7 +369,7 @@ contract LaunchpegFactory is
         emit SetFlatLaunchpegImplementation(_flatLaunchpegImplementation);
     }
 
-    function setERC1155SingleBundle(
+    function setERC1155SingleBundleImplementation(
         address _erc1155SingleBundleImplementation
     ) external onlyOwner {
         if (_erc1155SingleBundleImplementation == address(0)) {
