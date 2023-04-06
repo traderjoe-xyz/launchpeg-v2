@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import "./LaunchpegErrors.sol";
 import {ERC1155LaunchpegBase} from "./ERC1155LaunchpegBase.sol";
-import {IERC1155LaunchpegSingleBundle} from "./interfaces/IERC1155LaunchpegSingleBundle.sol";
+import {IERC1155LaunchpegSingleBundle, IERC1155LaunchpegBase} from "./interfaces/IERC1155LaunchpegSingleBundle.sol";
 
 contract ERC1155SingleBundle is
     IERC1155LaunchpegSingleBundle,
@@ -144,7 +144,12 @@ contract ERC1155SingleBundle is
 
     /// @notice Returns the current phase
     /// @return The current phase
-    function currentPhase() public view override returns (Phase) {
+    function currentPhase()
+        public
+        view
+        override(ERC1155LaunchpegBase, IERC1155LaunchpegBase)
+        returns (Phase)
+    {
         if (
             preMintStartTime == 0 ||
             publicSaleStartTime == 0 ||

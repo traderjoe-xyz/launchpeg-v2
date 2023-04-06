@@ -11,7 +11,7 @@ import {IBatchReveal} from "./interfaces/IBatchReveal.sol";
 import {IBaseLaunchpeg} from "./interfaces/IBaseLaunchpeg.sol";
 import {IFlatLaunchpeg} from "./interfaces/IFlatLaunchpeg.sol";
 import {ILaunchpeg} from "./interfaces/ILaunchpeg.sol";
-import {ERC1155LaunchpegBase} from "./ERC1155LaunchpegBase.sol";
+import {ERC1155LaunchpegBase, IERC1155LaunchpegBase} from "./ERC1155LaunchpegBase.sol";
 import {ERC1155SingleBundle} from "./ERC1155SingleBundle.sol";
 import {ILaunchpegFactory} from "./interfaces/ILaunchpegFactory.sol";
 import {IPendingOwnableUpgradeable} from "./interfaces/IPendingOwnableUpgradeable.sol";
@@ -289,7 +289,7 @@ contract LaunchpegFactory is
         bool isUpgradeable
     ) external onlyOwner returns (address) {
         // Packing data to avoid stack too deep error
-        ERC1155LaunchpegBase.InitData memory initData = ERC1155LaunchpegBase
+        ERC1155LaunchpegBase.InitData memory initData = IERC1155LaunchpegBase
             .InitData({
                 owner: msg.sender,
                 collectionName: name,

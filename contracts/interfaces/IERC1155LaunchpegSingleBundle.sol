@@ -3,7 +3,7 @@ pragma solidity ^0.8.4;
 
 import {IERC1155LaunchpegBase} from "./IERC1155LaunchpegBase.sol";
 
-interface IERC1155LaunchpegSingleBundle {
+interface IERC1155LaunchpegSingleBundle is IERC1155LaunchpegBase {
     event AllowlistSeeded();
     event PreMintStartTimeSet(uint256 preMintStartTime);
     event PublicSaleStartTimeSet(uint256 publicSaleStartTime);

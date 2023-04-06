@@ -3,6 +3,11 @@
 pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts-upgradeable/access/IAccessControlEnumerableUpgradeable.sol";
+import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
+import "@openzeppelin/contracts/token/ERC1155/extensions/IERC1155MetadataURI.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Enumerable.sol";
 
 import "./interfaces/IBaseLaunchpeg.sol";
 import "./interfaces/IBaseLaunchpegV1.sol";
@@ -10,9 +15,7 @@ import "./interfaces/IBatchReveal.sol";
 import "./interfaces/IFlatLaunchpeg.sol";
 import "./interfaces/ILaunchpeg.sol";
 import "./interfaces/ILaunchpegFactory.sol";
-import "./ERC1155LaunchpegBase.sol";
-import "./ERC1155SingleBundle.sol";
-import "./ERC721AUpgradeable.sol";
+import "./interfaces/IERC1155LaunchpegSingleBundle.sol";
 
 error LaunchpegLens__InvalidContract();
 error LaunchpegLens__InvalidLaunchpegType();
@@ -280,18 +283,18 @@ contract LaunchpegLens {
         address _launchpeg,
         LaunchpegType launchType
     ) private view returns (CollectionData memory data) {
-        data.name = ERC721AUpgradeable(_launchpeg).name();
-        data.symbol = ERC721AUpgradeable(_launchpeg).symbol();
+        data.name = IERC721Metadata(_launchpeg).name();
+        data.symbol = IERC721Metadata(_launchpeg).symbol();
         data.collectionSize = IBaseLaunchpeg(_launchpeg).collectionSize();
         data.maxPerAddressDuringMint = IBaseLaunchpeg(_launchpeg)
             .maxPerAddressDuringMint();
 
         if (launchType != LaunchpegType.ERC1155SingleBundle) {
-            data.totalSupply = ERC721AUpgradeable(_launchpeg).totalSupply();
+            data.totalSupply = IERC721Enumerable(_launchpeg).totalSupply();
             data.unrevealedURI = IBaseLaunchpeg(_launchpeg).unrevealedURI();
             data.baseURI = IBaseLaunchpeg(_launchpeg).baseURI();
         } else {
-            data.baseURI = ERC1155LaunchpegBase(_launchpeg).uri(0);
+            data.baseURI = IERC1155MetadataURI(_launchpeg).uri(0);
         }
     }
 
@@ -402,7 +405,9 @@ contract LaunchpegLens {
     function _getERC1155SingleBundleData(
         address launchpeg
     ) private view returns (ERC1155SingleBundleData memory data) {
-        ERC1155SingleBundle lp = ERC1155SingleBundle(launchpeg);
+        IERC1155LaunchpegSingleBundle lp = IERC1155LaunchpegSingleBundle(
+            launchpeg
+        );
         data.tokenSet = lp.tokenSet();
         data.currentPhase = IBaseLaunchpeg.Phase(uint8(lp.currentPhase()));
         data.amountForAllowlist = lp.amountForPreMint();
@@ -466,14 +471,12 @@ contract LaunchpegLens {
             }
 
             if (launchType == LaunchpegType.ERC1155SingleBundle) {
-                data.balanceOf = ERC1155SingleBundle(_launchpeg).balanceOf(
+                data.balanceOf = IERC1155(_launchpeg).balanceOf(
                     _user,
-                    ERC1155SingleBundle(_launchpeg).tokenSet()[0]
+                    IERC1155LaunchpegSingleBundle(_launchpeg).tokenSet()[0]
                 );
             } else {
-                data.balanceOf = ERC721AUpgradeable(_launchpeg).balanceOf(
-                    _user
-                );
+                data.balanceOf = IERC721(_launchpeg).balanceOf(_user);
             }
         }
     }
