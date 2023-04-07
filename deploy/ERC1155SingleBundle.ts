@@ -13,25 +13,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     autoMine: true, // speed up deployment on local network (ganache, hardhat), no effect on live networks
   })
 
-  if (deployResult.newlyDeployed) {
-    const contract = await hre.ethers.getContractAt('ERC1155SingleBundle', deployResult.address)
-
-    await contract.initialize(
-      deployer,
-      deployer,
-      'ipfs://bafybeievehyetoezu5nhhjgyadlszdig2puspoopqfjypivm7nisj7zxdq/',
-      10,
-      0,
-      1676502000,
-      1676509200,
-      1676516400,
-      'Test 1155 Single Token',
-      'T1155ST'
-    )
-
-    await contract.publicSaleMint(1)
-  }
-
   if (hre.network.name !== 'hardhat') {
     try {
       await run('verify:verify', {

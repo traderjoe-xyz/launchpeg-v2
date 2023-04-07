@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import "./LaunchpegErrors.sol";
 import {ERC1155LaunchpegBase} from "./ERC1155LaunchpegBase.sol";
-import {IERC1155LaunchpegSingleBundle} from "./interfaces/IERC1155LaunchpegSingleBundle.sol";
+import {IERC1155LaunchpegSingleBundle, IERC1155LaunchpegBase} from "./interfaces/IERC1155LaunchpegSingleBundle.sol";
 
 contract ERC1155SingleBundle is
     IERC1155LaunchpegSingleBundle,
@@ -13,61 +13,44 @@ contract ERC1155SingleBundle is
 {
     using SafeCast for uint256;
 
-    struct PreMintData {
-        address sender;
-        uint96 quantity;
-    }
+    /// @notice The collection size
+    uint128 public override collectionSize;
+    /// @notice The maximum number of tokens that can be minted per address
+    uint128 public override maxPerAddressDuringMint;
 
-    struct PreMintDataSet {
-        PreMintData[] preMintDataArr;
-        mapping(address => uint256) indexes;
-    }
+    /// @notice The number of tokens reserved for the devs
+    uint128 public override amountForDevs;
+    /// @notice The number of tokens minted for the devs
+    uint128 public override amountMintedByDevs;
 
-    uint128 public collectionSize;
-    uint128 public maxPerAddressDuringMint;
+    /// @notice The price of a token during the pre-mint
+    uint128 public override preMintPrice;
+    /// @notice The start time of the pre-mint
+    uint128 public override preMintStartTime;
 
-    uint128 public amountForDevs;
-    uint128 public amountMintedByDevs;
+    /// @notice The number of tokens reserved for the pre-mint
+    uint128 public override amountForPreMint;
+    /// @notice The number of tokens minted for the pre-mint
+    uint128 public override amountMintedDuringPreMint;
+    /// @notice The number of tokens claimed for the pre-mint
+    uint256 public override amountClaimedDuringPreMint;
 
-    uint128 public preMintPrice;
-    uint128 public preMintStartTime;
+    /// @notice The price of a token during the public sale
+    uint128 public override publicSalePrice;
+    /// @notice The start time of the public sale
+    uint128 public override publicSaleStartTime;
+    /// @notice The end time of the public sale
+    uint128 public override publicSaleEndTime;
+    /// @notice The number of tokens minted during the public sale
+    uint128 public override amountMintedDuringPublicSale;
 
-    uint128 public amountForPreMint;
-    uint128 public amountMintedDuringPreMint;
-    uint256 public amountClaimedDuringPreMint;
-
-    uint128 public publicSalePrice;
-    uint128 public publicSaleStartTime;
-    uint128 public publicSaleEndTime;
-    uint128 public amountMintedDuringPublicSale;
-
-    mapping(address => uint256) public allowlist;
-    mapping(address => uint256) public numberMinted;
+    /// @notice The number of tokens allowed to be minted per address during the pre-mint
+    mapping(address => uint256) public override allowlist;
+    /// @notice The number of tokens minted per address
+    mapping(address => uint256) public override numberMinted;
 
     uint256[] private _tokenSet;
     PreMintDataSet private _pendingPreMints;
-
-    event AllowlistSeeded();
-    event PreMintStartTimeSet(uint256 preMintStartTime);
-    event PublicSaleStartTimeSet(uint256 publicSaleStartTime);
-    event PublicSaleEndTimeSet(uint256 publicSaleEndTime);
-    event AmountForDevsSet(uint256 amountForDevs);
-    event AmountForPreMintSet(uint256 amountForPreMint);
-    event PreMintPriceSet(uint256 preMintPrice);
-    event PublicSalePriceSet(uint256 publicSalePrice);
-    event MaxPerAddressDuringMintSet(uint256 maxPerAddressDuringMint);
-    event CollectionSizeSet(uint256 collectionSize);
-    event PhaseInitialized(
-        uint256 preMintStartTime,
-        uint256 publicSaleStartTime,
-        uint256 publicSaleEndTime,
-        uint256 preMintPrice,
-        uint256 salePrice,
-        uint256 withdrawAVAXStartTime
-    );
-    event DevMint(address indexed sender, uint256 quantity);
-    event PreMint(address indexed sender, uint256 quantity, uint256 price);
-    event TokenSetUpdated(uint256[] tokenSet);
 
     modifier isEOA() {
         if (tx.origin != msg.sender) {
@@ -80,6 +63,13 @@ contract ERC1155SingleBundle is
         _disableInitializers();
     }
 
+    /// @notice Initializes the contract
+    /// @param initData The data used to initialize the base contract
+    /// @param initialMaxSupply The maximum number of tokens that can be minted
+    /// @param initialAmountForDevs The number of tokens reserved for the devs
+    /// @param initialAmountForPreMint The number of tokens reserved for the pre-mint
+    /// @param initialMaxPerAddressDuringMint The maximum number of tokens that can be minted per address
+    /// @param initialTokenSet The token set
     function initialize(
         InitData calldata initData,
         uint256 initialMaxSupply,
@@ -87,7 +77,7 @@ contract ERC1155SingleBundle is
         uint256 initialAmountForPreMint,
         uint256 initialMaxPerAddressDuringMint,
         uint256[] calldata initialTokenSet
-    ) external initializer {
+    ) external override initializer {
         __ERC1155LaunchpegBase_init(initData);
 
         if (amountForDevs + amountForPreMint > initialMaxSupply) {
@@ -102,13 +92,19 @@ contract ERC1155SingleBundle is
         _tokenSet = initialTokenSet;
     }
 
+    /// @notice Initializes the phases
+    /// @param initialPreMintStartTime The start time of the pre-mint
+    /// @param initialPublicSaleStartTime The start time of the public sale
+    /// @param initialPublicSaleEndTime The end time of the public sale
+    /// @param initialPreMintPrice The price of a token during the pre-mint
+    /// @param initialPublicSalePrice The price of a token during the public sale
     function initializePhases(
         uint256 initialPreMintStartTime,
         uint256 initialPublicSaleStartTime,
         uint256 initialPublicSaleEndTime,
         uint256 initialPreMintPrice,
         uint256 initialPublicSalePrice
-    ) external onlyOwner atPhase(Phase.NotStarted) {
+    ) external override onlyOwner atPhase(Phase.NotStarted) {
         if (
             initialPreMintStartTime < block.timestamp ||
             initialPublicSaleStartTime < initialPreMintStartTime ||
@@ -140,11 +136,20 @@ contract ERC1155SingleBundle is
         );
     }
 
-    function tokenSet() external view returns (uint256[] memory) {
+    /// @notice Returns the current token set
+    /// @return The current token set
+    function tokenSet() external view override returns (uint256[] memory) {
         return _tokenSet;
     }
 
-    function currentPhase() public view override returns (Phase) {
+    /// @notice Returns the current phase
+    /// @return The current phase
+    function currentPhase()
+        public
+        view
+        override(ERC1155LaunchpegBase, IERC1155LaunchpegBase)
+        returns (Phase)
+    {
         if (
             preMintStartTime == 0 ||
             publicSaleStartTime == 0 ||
@@ -171,15 +176,23 @@ contract ERC1155SingleBundle is
         return Phase.Ended;
     }
 
+    /// @notice Returns the amount of users that still need to claim their tokens
+    /// @return The amount of users that still need to claim their tokens
     function amountOfUsersWaitingForPremintClaim()
         external
         view
+        override
         returns (uint256)
     {
         return _pendingPreMints.preMintDataArr.length;
     }
 
-    function userPendingPreMints(address user) public view returns (uint256) {
+    /// @notice Returns the amount of tokens that still need to be claimed by a user
+    /// @param user The user
+    /// @return The amount of tokens that still need to be claimed
+    function userPendingPreMints(
+        address user
+    ) public view override returns (uint256) {
         uint256 userIndex = _pendingPreMints.indexes[user];
 
         if (userIndex == 0) {
@@ -189,6 +202,9 @@ contract ERC1155SingleBundle is
         return _pendingPreMints.preMintDataArr[userIndex - 1].quantity;
     }
 
+    /// @notice Returns true if the interface is supported
+    /// @param interfaceId The interface ID
+    /// @return isSupported True if the interface is supported
     function supportsInterface(
         bytes4 interfaceId
     ) public view override returns (bool) {
@@ -197,9 +213,17 @@ contract ERC1155SingleBundle is
             super.supportsInterface(interfaceId);
     }
 
+    /// @notice Mints tokens for the devs
+    /// @param amount The amount of tokens to mint
     function devMint(
         uint256 amount
-    ) external whenNotPaused onlyOwnerOrRole(PROJECT_OWNER_ROLE) nonReentrant {
+    )
+        external
+        override
+        whenNotPaused
+        onlyOwnerOrRole(PROJECT_OWNER_ROLE)
+        nonReentrant
+    {
         uint256 amountAlreadyMinted = amountMintedByDevs;
 
         if (amountAlreadyMinted + amount > amountForDevs)
@@ -212,9 +236,18 @@ contract ERC1155SingleBundle is
         emit DevMint(msg.sender, amount);
     }
 
+    /// @notice Buys tokens for the pre-mint
+    /// @param amount The amount of tokens to mint
     function preMint(
         uint96 amount
-    ) external payable whenNotPaused atPhase(Phase.PreMint) nonReentrant {
+    )
+        external
+        payable
+        override
+        whenNotPaused
+        atPhase(Phase.PreMint)
+        nonReentrant
+    {
         if (amount == 0) {
             revert Launchpeg__InvalidQuantity();
         }
@@ -253,7 +286,8 @@ contract ERC1155SingleBundle is
         emit PreMint(msg.sender, amount, totalPrice);
     }
 
-    function claimPremint() external whenNotPaused nonReentrant {
+    /// @notice Mints the tokens bought during pre-mint
+    function claimPremint() external override whenNotPaused nonReentrant {
         if (block.timestamp < publicSaleStartTime) {
             revert Launchpeg__WrongPhase();
         }
@@ -286,9 +320,11 @@ contract ERC1155SingleBundle is
         _mint(msg.sender, preMintQuantity);
     }
 
+    /// @notice Mints the tokens bought during pre-mint
+    /// @param numberOfClaims The number of claims to do
     function batchClaimPreMint(
         uint256 numberOfClaims
-    ) external whenNotPaused nonReentrant {
+    ) external override whenNotPaused nonReentrant {
         if (block.timestamp < publicSaleStartTime) {
             revert Launchpeg__WrongPhase();
         }
@@ -323,11 +359,14 @@ contract ERC1155SingleBundle is
         }
     }
 
+    /// @notice Buys tokens during public sale
+    /// @param amount The amount of tokens to mint
     function publicSaleMint(
         uint256 amount
     )
         external
         payable
+        override
         whenNotPaused
         atPhase(Phase.PublicSale)
         nonReentrant
@@ -352,15 +391,22 @@ contract ERC1155SingleBundle is
         _refundIfOver(publicSalePrice * amount);
     }
 
-    function updateTokenSet(uint256[] calldata newTokenSet) external onlyOwner {
+    /// @notice Updates the token set
+    /// @param newTokenSet The new token set
+    function updateTokenSet(
+        uint256[] calldata newTokenSet
+    ) external override onlyOwner {
         _tokenSet = newTokenSet;
         emit TokenSetUpdated(newTokenSet);
     }
 
+    /// @notice Updates the allowlist
+    /// @param addresses The addresses to update
+    /// @param amounts The amounts to update
     function seedAllowlist(
         address[] calldata addresses,
         uint256[] calldata amounts
-    ) external onlyOwner {
+    ) external override onlyOwner {
         uint256 addressesLength = addresses.length;
         if (addressesLength != amounts.length) {
             revert Launchpeg__WrongAddressesAndNumSlotsLength();
@@ -372,9 +418,11 @@ contract ERC1155SingleBundle is
         emit AllowlistSeeded();
     }
 
+    /// @notice Sets a new pre-mint start time
+    /// @param newPreMintStartTime The new pre-mint start time
     function setPreMintStartTime(
         uint256 newPreMintStartTime
-    ) external onlyOwner contractNotLocked {
+    ) external override onlyOwner contractNotLocked {
         if (newPreMintStartTime > publicSaleStartTime)
             revert Launchpeg__InvalidPhases();
 
@@ -382,9 +430,11 @@ contract ERC1155SingleBundle is
         emit PreMintStartTimeSet(newPreMintStartTime);
     }
 
+    /// @notice Sets a new public sale start time
+    /// @param newPublicSaleStartTime The new public sale start time
     function setPublicSaleStartTime(
         uint256 newPublicSaleStartTime
-    ) external onlyOwner contractNotLocked {
+    ) external override onlyOwner contractNotLocked {
         if (newPublicSaleStartTime > publicSaleEndTime)
             revert Launchpeg__InvalidPhases();
 
@@ -392,9 +442,11 @@ contract ERC1155SingleBundle is
         emit PublicSaleStartTimeSet(newPublicSaleStartTime);
     }
 
+    /// @notice Sets a new public sale end time
+    /// @param newPublicSaleEndTime The new public sale end time
     function setPublicSaleEndTime(
         uint256 newPublicSaleEndTime
-    ) external onlyOwner contractNotLocked {
+    ) external override onlyOwner contractNotLocked {
         if (newPublicSaleEndTime < publicSaleStartTime)
             revert Launchpeg__InvalidPhases();
 
@@ -402,9 +454,11 @@ contract ERC1155SingleBundle is
         emit PublicSaleEndTimeSet(newPublicSaleEndTime);
     }
 
+    /// @notice Sets a new amount for devs
+    /// @param newAmountForDevs The new amount for devs
     function setAmountForDevs(
         uint256 newAmountForDevs
-    ) external onlyOwner contractNotLocked {
+    ) external override onlyOwner contractNotLocked {
         if (amountMintedByDevs > newAmountForDevs) {
             revert Launchpeg__MaxSupplyForDevReached();
         }
@@ -413,9 +467,11 @@ contract ERC1155SingleBundle is
         emit AmountForDevsSet(newAmountForDevs);
     }
 
+    /// @notice Sets a new amount for pre-mint
+    /// @param newAmountForPreMint The new amount for pre-mint
     function setAmountForPreMint(
         uint256 newAmountForPreMint
-    ) external onlyOwner contractNotLocked {
+    ) external override onlyOwner contractNotLocked {
         if (amountMintedDuringPreMint > newAmountForPreMint) {
             revert Launchpeg__MaxSupplyReached();
         }
@@ -424,9 +480,11 @@ contract ERC1155SingleBundle is
         emit AmountForPreMintSet(newAmountForPreMint);
     }
 
+    /// @notice Sets a new pre-mint price
+    /// @param newPreMintPrice The new pre-mint price
     function setPreMintPrice(
         uint256 newPreMintPrice
-    ) external onlyOwner contractNotLocked {
+    ) external override onlyOwner contractNotLocked {
         if (newPreMintPrice > publicSalePrice)
             revert Launchpeg__InvalidAllowlistPrice();
 
@@ -434,9 +492,11 @@ contract ERC1155SingleBundle is
         emit PreMintPriceSet(newPreMintPrice);
     }
 
+    /// @notice Sets a new public sale price
+    /// @param newPublicSalePrice The new public sale price
     function setPublicSalePrice(
         uint256 newPublicSalePrice
-    ) external onlyOwner contractNotLocked {
+    ) external override onlyOwner contractNotLocked {
         if (newPublicSalePrice < preMintPrice)
             revert Launchpeg__InvalidAllowlistPrice();
 
@@ -444,9 +504,11 @@ contract ERC1155SingleBundle is
         emit PublicSalePriceSet(newPublicSalePrice);
     }
 
+    /// @notice Sets a new collection size
+    /// @param newCollectionSize The new collection size
     function setCollectionSize(
         uint256 newCollectionSize
-    ) external onlyOwner contractNotLocked {
+    ) external override onlyOwner contractNotLocked {
         if (
             newCollectionSize < amountForDevs + amountForPreMint ||
             newCollectionSize <
@@ -459,13 +521,17 @@ contract ERC1155SingleBundle is
         emit CollectionSizeSet(newCollectionSize);
     }
 
+    /// @notice Sets a new max per address during mint
+    /// @param newMaxAmountPerUser The new max per address during mint
     function setMaxPerAddressDuringMint(
         uint256 newMaxAmountPerUser
-    ) external onlyOwner contractNotLocked {
+    ) external override onlyOwner contractNotLocked {
         maxPerAddressDuringMint = newMaxAmountPerUser.toUint128();
         emit MaxPerAddressDuringMintSet(newMaxAmountPerUser);
     }
 
+    /// @dev Returns the available supply
+    /// @return The available supply
     function _availableSupply() internal view returns (uint256) {
         return
             collectionSize -
@@ -474,6 +540,9 @@ contract ERC1155SingleBundle is
             amountForDevs;
     }
 
+    /// @dev Mints every token in the token set
+    /// @param to The address to mint to
+    /// @param amount The amount of token sets to mint
     function _mint(address to, uint256 amount) internal {
         numberMinted[to] += amount;
 
