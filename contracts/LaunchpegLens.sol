@@ -465,17 +465,25 @@ contract LaunchpegLens {
             data.numberMinted = IBaseLaunchpeg(_launchpeg).numberMinted(_user);
             data.allowanceForAllowlistMint = IBaseLaunchpeg(_launchpeg)
                 .allowlist(_user);
-            if (launchVersion == LaunchpegVersion.V2) {
-                data.numberMintedWithPreMint = IBaseLaunchpeg(_launchpeg)
-                    .numberMintedWithPreMint(_user);
-            }
 
             if (launchType == LaunchpegType.ERC1155SingleBundle) {
                 data.balanceOf = IERC1155(_launchpeg).balanceOf(
                     _user,
                     IERC1155LaunchpegSingleBundle(_launchpeg).tokenSet()[0]
                 );
+
+                data.numberMintedWithPreMint =
+                    IERC1155LaunchpegSingleBundle(_launchpeg)
+                        .userPendingPreMints(_user) +
+                    IERC1155LaunchpegSingleBundle(_launchpeg).numberMinted(
+                        _user
+                    );
             } else {
+                if (launchVersion == LaunchpegVersion.V2) {
+                    data.numberMintedWithPreMint = IBaseLaunchpeg(_launchpeg)
+                        .numberMintedWithPreMint(_user);
+                }
+
                 data.balanceOf = IERC721(_launchpeg).balanceOf(_user);
             }
         }
