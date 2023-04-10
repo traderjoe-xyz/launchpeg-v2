@@ -47,13 +47,11 @@ const config: HardhatUserConfig = {
     },
     bscTestnet: {
       url: process.env.BSC_TESTNET_RPC_ENDPOINT ? process.env.BSC_TESTNET_RPC_ENDPOINT : '',
-      gasPrice: 20_000_000_000,
       chainId: 97,
       accounts: process.env.DEPLOY_PRIVATE_KEY ? [process.env.DEPLOY_PRIVATE_KEY] : [],
     },
     bsc: {
       url: process.env.BSC_RPC_ENDPOINT ? process.env.BSC_RPC_ENDPOINT : '',
-      gasPrice: 5_000_000_000,
       chainId: 56,
       accounts: process.env.DEPLOY_PRIVATE_KEY ? [process.env.DEPLOY_PRIVATE_KEY] : [],
     },
