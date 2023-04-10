@@ -471,6 +471,13 @@ contract LaunchpegLens {
                     _user,
                     IERC1155LaunchpegSingleBundle(_launchpeg).tokenSet()[0]
                 );
+
+                data.numberMintedWithPreMint =
+                    IERC1155LaunchpegSingleBundle(_launchpeg)
+                        .userPendingPreMints(_user) +
+                    IERC1155LaunchpegSingleBundle(_launchpeg).numberMinted(
+                        _user
+                    );
             } else {
                 if (launchVersion == LaunchpegVersion.V2) {
                     data.numberMintedWithPreMint = IBaseLaunchpeg(_launchpeg)
