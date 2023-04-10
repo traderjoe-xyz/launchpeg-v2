@@ -5,7 +5,7 @@ import { Contract, ContractFactory } from 'ethers'
 import { config as hardhatConfig, ethers, network } from 'hardhat'
 import { getDefaultLaunchpegConfig, LaunchpegConfig } from './utils/helpers'
 
-describe.only('OperatorFilterRegistry', function () {
+describe('OperatorFilterRegistry', function () {
   let flatLaunchpegCF: ContractFactory
   let launchpeg: Contract
   let batchRevealCF: ContractFactory

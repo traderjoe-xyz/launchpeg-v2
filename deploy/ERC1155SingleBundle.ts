@@ -6,7 +6,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deploy } = deployments
   const { deployer } = await getNamedAccounts()
 
-  const deployResult = await deploy('Launchpeg', {
+  const deployResult = await deploy('ERC1155SingleBundle', {
     from: deployer,
     args: [],
     log: true,
@@ -25,4 +25,4 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 }
 
 export default func
-func.tags = ['Launchpeg']
+func.tags = ['ERC1155SingleBundle']

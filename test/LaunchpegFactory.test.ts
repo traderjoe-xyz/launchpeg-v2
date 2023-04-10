@@ -7,11 +7,13 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 describe('LaunchpegFactory', () => {
   let launchpegCF: ContractFactory
   let flatLaunchpegCF: ContractFactory
+  let erc1155SingleBundleCF: ContractFactory
   let launchpegFactoryCF: ContractFactory
   let batchRevealCF: ContractFactory
 
   let launchpeg: Contract
   let flatLaunchpeg: Contract
+  let erc1155SingleBundle: Contract
   let launchpegFactory: Contract
   let batchReveal: Contract
 
@@ -30,6 +32,7 @@ describe('LaunchpegFactory', () => {
   before(async () => {
     launchpegCF = await ethers.getContractFactory('Launchpeg')
     flatLaunchpegCF = await ethers.getContractFactory('FlatLaunchpeg')
+    erc1155SingleBundleCF = await ethers.getContractFactory('ERC1155SingleBundle')
     launchpegFactoryCF = await ethers.getContractFactory('LaunchpegFactory')
     batchRevealCF = await ethers.getContractFactory('BatchReveal')
 
@@ -56,6 +59,7 @@ describe('LaunchpegFactory', () => {
     await deployBatchReveal()
     await deployLaunchpeg()
     await deployFlatLaunchpeg()
+    await deploy1155SingleBundle()
   })
 
   const deployBatchReveal = async () => {
@@ -99,10 +103,15 @@ describe('LaunchpegFactory', () => {
     )
   }
 
+  const deploy1155SingleBundle = async () => {
+    erc1155SingleBundle = await erc1155SingleBundleCF.deploy()
+  }
+
   const deployLaunchpegFactory = async () => {
     launchpegFactory = await upgrades.deployProxy(launchpegFactoryCF, [
       launchpeg.address,
       flatLaunchpeg.address,
+      erc1155SingleBundle.address,
       batchReveal.address,
       config.joeFeePercent,
       royaltyReceiver.address,
@@ -120,6 +129,7 @@ describe('LaunchpegFactory', () => {
         upgrades.deployProxy(launchpegFactoryCF, [
           ethers.constants.AddressZero,
           flatLaunchpeg.address,
+          erc1155SingleBundle.address,
           batchReveal.address,
           200,
           royaltyReceiver.address,
@@ -129,6 +139,18 @@ describe('LaunchpegFactory', () => {
       await expect(
         upgrades.deployProxy(launchpegFactoryCF, [
           launchpeg.address,
+          ethers.constants.AddressZero,
+          erc1155SingleBundle.address,
+          batchReveal.address,
+          200,
+          royaltyReceiver.address,
+        ])
+      ).to.be.revertedWith('LaunchpegFactory__InvalidImplementation()')
+
+      await expect(
+        upgrades.deployProxy(launchpegFactoryCF, [
+          launchpeg.address,
+          flatLaunchpeg.address,
           ethers.constants.AddressZero,
           batchReveal.address,
           200,
@@ -142,6 +164,7 @@ describe('LaunchpegFactory', () => {
         upgrades.deployProxy(launchpegFactoryCF, [
           launchpeg.address,
           flatLaunchpeg.address,
+          erc1155SingleBundle.address,
           ethers.constants.AddressZero,
           200,
           royaltyReceiver.address,
@@ -154,6 +177,7 @@ describe('LaunchpegFactory', () => {
         upgrades.deployProxy(launchpegFactoryCF, [
           launchpeg.address,
           flatLaunchpeg.address,
+          erc1155SingleBundle.address,
           batchReveal.address,
           10_001,
           royaltyReceiver.address,
@@ -166,6 +190,7 @@ describe('LaunchpegFactory', () => {
         upgrades.deployProxy(launchpegFactoryCF, [
           launchpeg.address,
           flatLaunchpeg.address,
+          erc1155SingleBundle.address,
           batchReveal.address,
           200,
           ethers.constants.AddressZero,
@@ -214,6 +239,70 @@ describe('LaunchpegFactory', () => {
       expect(await launchpegFactory.numLaunchpegs(1)).to.equal(1)
       const launchpegAddress = await launchpegFactory.allLaunchpegs(1, 0)
       expect(await launchpegFactory.isLaunchpeg(1, launchpegAddress)).to.equal(true)
+    })
+
+    it('Should create ERC1155SingleBundle as well', async () => {
+      expect(await launchpegFactory.numLaunchpegs(2)).to.equal(0)
+
+      await launchpegFactory.create1155SingleBundle(
+        'JoePEG',
+        'JOEPEG',
+        royaltyReceiver.address,
+        config.maxPerAddressDuringMint,
+        config.collectionSize,
+        config.amountForDevs,
+        config.amountForAllowlist,
+        [0],
+        false
+      )
+
+      expect(await launchpegFactory.numLaunchpegs(2)).to.equal(1)
+      const launchpegAddress = await launchpegFactory.allLaunchpegs(2, 0)
+      expect(await launchpegFactory.isLaunchpeg(2, launchpegAddress)).to.equal(true)
+    })
+
+    it('Should correctly setup upgradeable ERC1155SingleBundle', async () => {
+      expect(await launchpegFactory.numLaunchpegs(2)).to.equal(0)
+
+      const tx = await launchpegFactory.create1155SingleBundle(
+        'JoePEG',
+        'JOEPEG',
+        royaltyReceiver.address,
+        config.maxPerAddressDuringMint,
+        config.collectionSize,
+        config.amountForDevs,
+        config.amountForAllowlist,
+        [0],
+        true
+      )
+
+      const receipt = await tx.wait()
+
+      const logAdmin = receipt.events.find((e: { event: string }) => e.event === 'ProxyAdminFor1155Created').args
+      const logLaunchpeg = receipt.events.find((e: { event: string }) => e.event === 'ERC1155SingleBundleCreated').args
+
+      const proxyAdmin = await ethers.getContractAt('ProxyAdmin', logAdmin.proxyAdmin)
+      const erc1155SingleBundleProxy = await ethers.getContractAt(
+        'ERC1155SingleBundle',
+        logLaunchpeg.erc1155SingleBundle
+      )
+
+      expect(await proxyAdmin.owner()).to.eq(dev.address)
+      expect(await erc1155SingleBundleProxy.owner()).to.eq(dev.address)
+      expect(await proxyAdmin.getProxyImplementation(erc1155SingleBundleProxy.address)).to.eq(
+        erc1155SingleBundle.address
+      )
+      expect(await proxyAdmin.getProxyAdmin(erc1155SingleBundleProxy.address)).to.eq(proxyAdmin.address)
+
+      // Checks that the proxy is correctly initialized
+      expect(await erc1155SingleBundleProxy.name()).to.eq('JoePEG')
+
+      // Test to see if the proxy can be upgraded
+      const newImplementation = await erc1155SingleBundleCF.deploy()
+      await proxyAdmin.upgrade(erc1155SingleBundleProxy.address, newImplementation.address)
+
+      expect(await proxyAdmin.getProxyImplementation(erc1155SingleBundleProxy.address)).to.eq(newImplementation.address)
+      expect(await erc1155SingleBundleProxy.name()).to.eq('JoePEG')
     })
 
     it('Should not initialize batch reveal if disabled', async () => {

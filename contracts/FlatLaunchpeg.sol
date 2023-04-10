@@ -23,7 +23,7 @@ contract FlatLaunchpeg is BaseLaunchpeg, IFlatLaunchpeg {
     /// @param publicSaleEndTime Public sale end time in seconds
     /// @param allowlistPrice Price of the allowlist sale in Avax
     /// @param salePrice Price of the public sale in Avax
-    event Initialized(
+    event PhaseInitialized(
         uint256 preMintStartTime,
         uint256 allowlistStartTime,
         uint256 publicSaleStartTime,
@@ -80,7 +80,7 @@ contract FlatLaunchpeg is BaseLaunchpeg, IFlatLaunchpeg {
         publicSaleStartTime = _publicSaleStartTime;
         publicSaleEndTime = _publicSaleEndTime;
 
-        emit Initialized(
+        emit PhaseInitialized(
             preMintStartTime,
             allowlistStartTime,
             publicSaleStartTime,
@@ -94,7 +94,9 @@ contract FlatLaunchpeg is BaseLaunchpeg, IFlatLaunchpeg {
     /// have been initialized.
     /// @dev Only callable by owner
     /// @param _preMintStartTime New pre-mint start time
-    function setPreMintStartTime(uint256 _preMintStartTime)
+    function setPreMintStartTime(
+        uint256 _preMintStartTime
+    )
         external
         override
         onlyOwner
@@ -152,7 +154,9 @@ contract FlatLaunchpeg is BaseLaunchpeg, IFlatLaunchpeg {
     /// This function call must use less than 30 000 gas.
     /// @param _interfaceId InterfaceId to consider. Comes from type(Interface).interfaceId
     /// @return isInterfaceSupported True if the considered interface is supported
-    function supportsInterface(bytes4 _interfaceId)
+    function supportsInterface(
+        bytes4 _interfaceId
+    )
         public
         view
         virtual

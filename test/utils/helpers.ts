@@ -119,7 +119,7 @@ export const initializePhasesFlatLaunchpeg = async (
   await advanceTimeAndBlockToPhase(currentPhase)
 }
 
-const advanceTimeAndBlockToPhase = async (phase: Phase) => {
+export const advanceTimeAndBlockToPhase = async (phase: Phase) => {
   switch (phase) {
     case Phase.NotStarted:
       break

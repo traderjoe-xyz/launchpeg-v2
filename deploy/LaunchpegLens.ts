@@ -20,13 +20,15 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     autoMine: true, // speed up deployment on local network (ganache, hardhat), no effect on live networks
   })
 
-  try {
-    await run('verify:verify', {
-      address: deployResult.address,
-      constructorArguments: constructorArgs,
-    })
-  } catch (err) {
-    console.log(err)
+  if (hre.network.name !== 'hardhat') {
+    try {
+      await run('verify:verify', {
+        address: deployResult.address,
+        constructorArguments: constructorArgs,
+      })
+    } catch (err) {
+      console.log(err)
+    }
   }
 }
 export default func
