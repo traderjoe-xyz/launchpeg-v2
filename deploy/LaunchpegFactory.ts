@@ -12,7 +12,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const flatLaunchpegAddress = (await deployments.get('FlatLaunchpeg')).address
   const erc1155SingleBundleAddress = (await deployments.get('ERC1155SingleBundle')).address
   const batchRevealAddress = (await deployments.get('BatchReveal')).address
-  const feePercent = 500
+  const feePercent = 750
   const feeCollector = deployer
 
   const proxyOwner = getProxyOwner(chainId)

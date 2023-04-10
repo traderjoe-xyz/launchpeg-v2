@@ -45,6 +45,18 @@ const config: HardhatUserConfig = {
       chainId: 43114,
       accounts: process.env.DEPLOY_PRIVATE_KEY ? [process.env.DEPLOY_PRIVATE_KEY] : [],
     },
+    bscTestnet: {
+      url: process.env.BSC_TESTNET_RPC_ENDPOINT ? process.env.BSC_TESTNET_RPC_ENDPOINT : '',
+      gasPrice: 20_000_000_000,
+      chainId: 97,
+      accounts: process.env.BSC_TESTNET_DEPLOYER ? [process.env.BSC_TESTNET_DEPLOYER] : [],
+    },
+    bsc: {
+      url: process.env.BSC_RPC_ENDPOINT ? process.env.BSC_RPC_ENDPOINT : '',
+      gasPrice: 5_000_000_000,
+      chainId: 56,
+      accounts: process.env.BSC_TESTNET_DEPLOYER ? [process.env.BSC_TESTNET_DEPLOYER] : [],
+    },
   },
   contractSizer: {
     strict: true,
@@ -56,6 +68,8 @@ const config: HardhatUserConfig = {
     apiKey: {
       avalanche: process.env.SNOWTRACE_API_KEY,
       avalancheFujiTestnet: process.env.SNOWTRACE_API_KEY,
+      bscTestnet: process.env.BSC_API_KEY,
+      bsc: process.env.BSC_API_KEY,
     },
   },
   gasReporter: {
